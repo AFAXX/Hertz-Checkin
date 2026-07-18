@@ -4,93 +4,82 @@ import { v4 as uuidv4 } from 'uuid'
 import * as XLSX from 'xlsx'
 
 interface RowData {
-  contractNumber?: string
-  customerName?: string
-  customerEmail?: string
-  customerPhone?: string
-  vehiclePlate?: string
-  vehicleModel?: string
-  vehicleColor?: string
-  [key: string]: string | undefined
+  contractNumber: string
+  customerName: string
+  customerEmail: string
+  customerPhone: string
+  vehiclePlate: string
+  vehicleModel: string
+  vehicleColor: string
 }
 
-// Map possible column names to our fields
+// EXACT match only (case-insensitive, trimmed, stripped of special chars)
+// Keys are normalized: lowercase, no spaces, no special chars
 const columnMap: Record<string, keyof RowData> = {
-  // Contract number
+  // Contract / Rental number — Hertz uses "Rental" column
+  'rental': 'contractNumber',
   'contract': 'contractNumber',
   'contractnumber': 'contractNumber',
-  'contract_number': 'contractNumber',
-  'contract no': 'contractNumber',
   'contractno': 'contractNumber',
   'agreement': 'contractNumber',
-  'agreementno': 'contractNumber',
   'ra': 'contractNumber',
-  'rano': 'contractNumber',
   'reservation': 'contractNumber',
+  'reservationno': 'contractNumber',
+  'confirmation': 'contractNumber',
+  'confirmationno': 'contractNumber',
 
-  // Customer name
-  'name': 'customerName',
-  'customername': 'customerName',
-  'customer_name': 'customerName',
+  // Customer name — Hertz uses "Customer" column
   'customer': 'customerName',
-  'clientname': 'customerName',
+  'customername': 'customerName',
   'client': 'customerName',
   'driver': 'customerName',
   'drivername': 'customerName',
+  'name': 'customerName',
   'fullname': 'customerName',
-  'full_name': 'customerName',
   'surname': 'customerName',
 
   // Email
   'email': 'customerEmail',
   'customeremail': 'customerEmail',
-  'customer_email': 'customerEmail',
-  'e-mail': 'customerEmail',
-  'mail': 'customerEmail',
 
   // Phone
   'phone': 'customerPhone',
   'customerphone': 'customerPhone',
-  'customer_phone': 'customerPhone',
   'mobile': 'customerPhone',
   'tel': 'customerPhone',
   'telephone': 'customerPhone',
-  'cell': 'customerPhone',
 
-  // Plate
+  // Vehicle plate — Hertz uses "Vehicle" column
+  'vehicle': 'vehiclePlate',
   'plate': 'vehiclePlate',
   'vehicleplate': 'vehiclePlate',
-  'vehicle_plate': 'vehiclePlate',
   'licenseplate': 'vehiclePlate',
-  'license_plate': 'vehiclePlate',
   'registration': 'vehiclePlate',
-  'reg': 'vehiclePlate',
-  'tag': 'vehiclePlate',
-  'numberplate': 'vehiclePlate',
   'targa': 'vehiclePlate',
 
-  // Model
+  // Vehicle model — Hertz uses "Model" or "Group" column
   'model': 'vehicleModel',
   'vehiclemodel': 'vehicleModel',
-  'vehicle_model': 'vehicleModel',
   'carmodel': 'vehicleModel',
-  'car': 'vehicleModel',
-  'vehicle': 'vehicleModel',
+  'cargroup': 'vehicleModel',
+  'cgroup': 'vehicleModel',
+  'group': 'vehicleModel',
   'make': 'vehicleModel',
-  'make/model': 'vehicleModel',
-  'tipo': 'vehicleModel',
+  'makemodel': 'vehicleModel',
 
   // Color
   'color': 'vehicleColor',
   'vehiclecolor': 'vehicleColor',
-  'vehicle_color': 'vehicleColor',
   'colour': 'vehicleColor',
-  'colore': 'vehicleColor',
 }
 
-function normalizeColumnName(col: string): keyof RowData | null {
-  const normalized = col.toLowerCase().trim().replace(/[^a-z0-9]/g, '')
-  return columnMap[normalized] || null
+function normalizeStr(s: string): string {
+  return s.toLowerCase().trim().replace(/[^a-z0-9]/g, '')
+}
+
+function findMapping(header: string): keyof RowData | null {
+  const n = normalizeStr(header)
+  return columnMap[n] || null
 }
 
 export async function POST(request: NextRequest) {
@@ -99,57 +88,76 @@ export async function POST(request: NextRequest) {
     const file = formData.get('file') as File | null
 
     if (!file) {
-      return NextResponse.json(
-        { error: 'No file uploaded' },
-        { status: 400 }
-      )
+      return NextResponse.json({ error: 'No file uploaded' }, { status: 400 })
     }
 
-    // Parse the Excel/CSV file
     const buffer = Buffer.from(await file.arrayBuffer())
     const workbook = XLSX.read(buffer, { type: 'buffer' })
-
-    // Use first sheet
     const sheetName = workbook.SheetNames[0]
     const sheet = workbook.Sheets[sheetName]
-    const rows: Record<string, string>[] = XLSX.utils.sheet_to_json(sheet, { defval: '' })
+    const rows: Record<string, string | number>[] = XLSX.utils.sheet_to_json(sheet, { defval: '' })
 
     if (rows.length === 0) {
-      return NextResponse.json(
-        { error: 'The file is empty or has no data rows' },
-        { status: 400 }
-      )
+      return NextResponse.json({ error: 'The file is empty' }, { status: 400 })
     }
 
-    // Map columns from the first row's headers
+    // Map columns - EXACT match only, one header → one field
     const headers = Object.keys(rows[0])
     const fieldMapping: Record<string, keyof RowData> = {}
+    const usedFields = new Set<string>()
 
+    // Priority order: Rental > Confirmation > other for contractNumber
+    // Model > Group > C Group for vehicleModel
+    const priorityOrder: Partial<Record<keyof RowData, string[]>> = {
+      contractNumber: ['rental', 'contract', 'confirmation', 'ra', 'agreement'],
+      vehicleModel: ['model', 'cgroup', 'group', 'make'],
+    }
+
+    // First pass: map with priority
+    for (const field of Object.values(priorityOrder)) {
+      for (const preferred of field!) {
+        for (const header of headers) {
+          const n = normalizeStr(header)
+          if (n === preferred && !usedFields.has(n)) {
+            const mapped = columnMap[n]
+            if (mapped && !Object.values(fieldMapping).includes(mapped)) {
+              fieldMapping[header] = mapped
+              usedFields.add(n)
+            }
+          }
+        }
+      }
+    }
+
+    // Second pass: map remaining columns
     for (const header of headers) {
-      const mapped = normalizeColumnName(header)
-      if (mapped) {
+      if (fieldMapping[header]) continue
+      const mapped = findMapping(header)
+      if (mapped && !Object.values(fieldMapping).includes(mapped)) {
         fieldMapping[header] = mapped
       }
     }
 
-    // Check we have at least the required fields
+    // Check required
     const mappedFields = new Set(Object.values(fieldMapping))
-    const requiredFields: (keyof RowData)[] = ['contractNumber', 'customerName', 'vehiclePlate', 'vehicleModel']
+    const requiredFields: (keyof RowData)[] = ['contractNumber', 'customerName']
     const missingFields = requiredFields.filter(f => !mappedFields.has(f))
 
     if (missingFields.length > 0) {
       return NextResponse.json({
-        error: `Could not map required columns: ${missingFields.join(', ')}. Please ensure your file has columns for: Contract Number, Customer Name, Vehicle Plate, Vehicle Model.`,
+        error: `Could not find columns for: ${missingFields.join(', ')}. Found columns: ${headers.join(', ')}`,
         detectedColumns: headers,
-        mappedColumns: fieldMapping,
+        mappedColumns: Object.fromEntries(Object.entries(fieldMapping)),
       }, { status: 400 })
     }
 
-    // Process each row
+    // Process rows
     const results: Array<{
       row: number
       contractNumber: string
       customerName: string
+      vehiclePlate: string
+      vehicleModel: string
       status: 'created' | 'skipped' | 'error'
       token?: string
       link?: string
@@ -161,30 +169,35 @@ export async function POST(request: NextRequest) {
     for (let i = 0; i < rows.length; i++) {
       const row = rows[i]
 
-      // Map row data
-      const data: RowData = {}
+      const data: Partial<RowData> = {}
       for (const [header, field] of Object.entries(fieldMapping)) {
-        data[field] = String(row[header] || '').trim()
+        const val = row[header]
+        data[field] = val !== undefined && val !== null ? String(val).trim() : ''
       }
 
-      if (!data.contractNumber || !data.customerName || !data.vehiclePlate || !data.vehicleModel) {
+      const contractNum = data.contractNumber || ''
+      const custName = data.customerName || ''
+      const plate = data.vehiclePlate || ''
+      const model = data.vehicleModel || ''
+
+      if (!contractNum || !custName) {
         results.push({
-          row: i + 2, // +2 because row 1 is header
-          contractNumber: data.contractNumber || '(empty)',
-          customerName: data.customerName || '(empty)',
+          row: i + 2,
+          contractNumber: contractNum || '(empty)',
+          customerName: custName || '(empty)',
+          vehiclePlate: plate || '-',
+          vehicleModel: model || '-',
           status: 'error',
-          error: 'Missing required fields',
+          error: 'Missing contract number or customer name',
         })
         continue
       }
 
-      // Check if contract already exists
       const existing = await db.rentalContract.findUnique({
-        where: { contractNumber: data.contractNumber },
+        where: { contractNumber: contractNum },
       })
 
       if (existing) {
-        // Generate a new token for the existing contract
         const token = uuidv4()
         await db.accessToken.create({
           data: {
@@ -195,25 +208,26 @@ export async function POST(request: NextRequest) {
         })
         results.push({
           row: i + 2,
-          contractNumber: data.contractNumber,
-          customerName: data.customerName,
+          contractNumber: contractNum,
+          customerName: custName,
+          vehiclePlate: plate || existing.vehiclePlate,
+          vehicleModel: model || existing.vehicleModel,
           status: 'skipped',
           token,
           link: `/#token=${token}`,
-          error: 'Contract already existed — new token generated',
+          error: 'Already existed — new token generated',
         })
         continue
       }
 
-      // Create contract + token
       const contract = await db.rentalContract.create({
         data: {
-          contractNumber: data.contractNumber,
-          customerName: data.customerName,
+          contractNumber: contractNum,
+          customerName: custName,
           customerEmail: data.customerEmail || null,
           customerPhone: data.customerPhone || null,
-          vehiclePlate: data.vehiclePlate,
-          vehicleModel: data.vehicleModel,
+          vehiclePlate: plate || 'N/A',
+          vehicleModel: model || 'N/A',
           vehicleColor: data.vehicleColor || null,
         },
       })
@@ -229,8 +243,10 @@ export async function POST(request: NextRequest) {
 
       results.push({
         row: i + 2,
-        contractNumber: data.contractNumber,
-        customerName: data.customerName,
+        contractNumber: contractNum,
+        customerName: custName,
+        vehiclePlate: plate || 'N/A',
+        vehicleModel: model || 'N/A',
         status: 'created',
         token,
         link: `/#token=${token}`,
@@ -243,20 +259,15 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      summary: {
-        total: rows.length,
-        created,
-        skipped,
-        errors,
-      },
+      summary: { total: rows.length, created, skipped, errors },
       detectedColumns: headers,
-      mappedColumns: fieldMapping,
+      mappedColumns: Object.fromEntries(Object.entries(fieldMapping)),
       results,
     })
   } catch (error) {
     console.error('Bulk upload error:', error)
     return NextResponse.json(
-      { error: 'Failed to process the uploaded file' },
+      { error: `Failed to process file: ${error instanceof Error ? error.message : 'Unknown error'}` },
       { status: 500 }
     )
   }
