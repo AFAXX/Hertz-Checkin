@@ -14,9 +14,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Hertz Malta — Check-in Fotografico Veicoli",
-  description: "Portale per la documentazione fotografica dei veicoli al momento del ritiro. Hertz Malta.",
-  keywords: ["Hertz", "Malta", "check-in", "veicoli", "foto", "noleggio"],
+  title: "Hertz Malta — Vehicle Photo Check-in",
+  description: "Portal for vehicle photo documentation at pickup. Replace email submissions with a guided, mandatory photo checklist.",
+  keywords: ["Hertz", "Malta", "check-in", "vehicle", "photo", "car rental", "documentation"],
   icons: {
     icon: "https://z-cdn.chatglm.cn/z-ai/static/logo.svg",
   },
@@ -28,7 +28,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="it" suppressHydrationWarning>
+    <html lang="en" suppressHydrationWarning>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased bg-background text-foreground`}
       >
