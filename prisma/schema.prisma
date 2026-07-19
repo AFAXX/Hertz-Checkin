@@ -64,5 +64,6 @@ model PhotoSubmission {
 
   contract      RentalContract     @relation(fields: [contractId], references: [id], onDelete: Cascade)
   requirement   PhotoRequirement   @relation(fields: [requirementId], references: [id], onDelete: Cascade)
-  // Multiple photos allowed per requirement
+
+  @@unique([contractId, requirementId])
 }
