@@ -10,7 +10,7 @@ export async function GET(request: NextRequest) {
 
     const accessToken = await db.accessToken.findUnique({
       where: { token },
-      include: { rentalContract: true },
+      include: { contract: true },
     });
 
     if (!accessToken) {
@@ -18,9 +18,9 @@ export async function GET(request: NextRequest) {
     }
 
     const submissions = await db.photoSubmission.findMany({
-      where: { rentalContractId: accessToken.rentalContractId },
-      select: { id: true, photoUrl: true, photoRequirementId: true, fileName: true, createdAt: true },
-      orderBy: { createdAt: 'asc' },
+      where: { contractId: accessToken.contractId },
+      select: { id: true, localPath: true, requirementId: true, fileName: true, uploadedAt: true },
+      orderBy: { uploadedAt: 'asc' },
     });
 
     return NextResponse.json({ submissions });
