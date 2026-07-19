@@ -14,7 +14,6 @@ interface RowData {
 }
 
 // EXACT match only (case-insensitive, trimmed, stripped of special chars)
-// Keys are normalized: lowercase, no spaces, no special chars
 const columnMap: Record<string, keyof RowData> = {
   // Contract / Rental number — Hertz uses "Rental" column
   'rental': 'contractNumber',
@@ -98,10 +97,10 @@ export async function POST(request: NextRequest) {
     const rows: Record<string, string | number>[] = XLSX.utils.sheet_to_json(sheet, { defval: '' })
 
     if (rows.length === 0) {
-      return NextResponse.json({ error: 'The file is empty' }, { status: 400 })
+      return NextResponse.json({ error: 'The file is empty or has no data rows' }, { status: 400 })
     }
 
-    // Map columns - EXACT match only, one header → one field
+    // Map columns - EXACT match only, one header -> one field
     const headers = Object.keys(rows[0])
     const fieldMapping: Record<string, keyof RowData> = {}
     const usedFields = new Set<string>()
@@ -266,8 +265,9 @@ export async function POST(request: NextRequest) {
     })
   } catch (error) {
     console.error('Bulk upload error:', error)
+    const msg = error instanceof Error ? error.message : 'Unknown error'
     return NextResponse.json(
-      { error: `Failed to process file: ${error instanceof Error ? error.message : 'Unknown error'}` },
+      { error: `Failed to process file: ${msg}` },
       { status: 500 }
     )
   }

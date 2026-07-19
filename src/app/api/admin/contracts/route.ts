@@ -51,8 +51,9 @@ export async function GET() {
     return NextResponse.json({ contracts: enriched })
   } catch (error) {
     console.error('List contracts error:', error)
+    const msg = error instanceof Error ? error.message : 'Unknown error'
     return NextResponse.json(
-      { error: 'Errore nel recupero dei contratti' },
+      { error: `Failed to fetch contracts: ${msg}` },
       { status: 500 }
     )
   }
@@ -63,9 +64,9 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const { contractNumber, customerName, customerEmail, customerPhone, vehiclePlate, vehicleModel, vehicleColor } = body
 
-    if (!contractNumber || !customerName || !vehiclePlate || !vehicleModel) {
+    if (!contractNumber || !customerName) {
       return NextResponse.json(
-        { error: 'Campi obbligatori mancanti: numero contratto, nome cliente, targa veicolo, modello veicolo' },
+        { error: 'Missing required fields: contract number and customer name' },
         { status: 400 }
       )
     }
@@ -77,7 +78,7 @@ export async function POST(request: NextRequest) {
 
     if (existing) {
       return NextResponse.json(
-        { error: 'Numero contratto già esistente' },
+        { error: 'Contract number already exists' },
         { status: 409 }
       )
     }
@@ -89,8 +90,8 @@ export async function POST(request: NextRequest) {
         customerName,
         customerEmail: customerEmail || null,
         customerPhone: customerPhone || null,
-        vehiclePlate,
-        vehicleModel,
+        vehiclePlate: vehiclePlate || 'N/A',
+        vehicleModel: vehicleModel || 'N/A',
         vehicleColor: vehicleColor || null,
       },
     })
@@ -98,7 +99,7 @@ export async function POST(request: NextRequest) {
     // Generate access token
     const expirationHours = parseInt(process.env.TOKEN_EXPIRATION_HOURS || '6', 10)
     const token = uuidv4()
-    
+
     const accessToken = await db.accessToken.create({
       data: {
         token,
@@ -122,8 +123,9 @@ export async function POST(request: NextRequest) {
     })
   } catch (error) {
     console.error('Create contract error:', error)
+    const msg = error instanceof Error ? error.message : 'Unknown error'
     return NextResponse.json(
-      { error: 'Errore nella creazione del contratto' },
+      { error: `Failed to create contract: ${msg}` },
       { status: 500 }
     )
   }

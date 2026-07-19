@@ -8,7 +8,7 @@ export async function POST(request: NextRequest) {
 
     if (!contractId) {
       return NextResponse.json(
-        { error: 'ID contratto mancante' },
+        { error: 'Missing contract ID' },
         { status: 400 }
       )
     }
@@ -19,14 +19,14 @@ export async function POST(request: NextRequest) {
 
     if (!contract) {
       return NextResponse.json(
-        { error: 'Contratto non trovato' },
+        { error: 'Contract not found' },
         { status: 404 }
       )
     }
 
     if (contract.status === 'completed') {
       return NextResponse.json(
-        { error: 'Impossibile generare un token per un contratto già completato' },
+        { error: 'Cannot generate token for a completed contract' },
         { status: 400 }
       )
     }
@@ -53,8 +53,9 @@ export async function POST(request: NextRequest) {
     })
   } catch (error) {
     console.error('Generate token error:', error)
+    const msg = error instanceof Error ? error.message : 'Unknown error'
     return NextResponse.json(
-      { error: 'Errore nella generazione del token' },
+      { error: `Failed to generate token: ${msg}` },
       { status: 500 }
     )
   }

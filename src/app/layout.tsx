@@ -14,9 +14,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Hertz Malta — Vehicle Photo Check-in",
-  description: "Portal for vehicle photo documentation at pickup. Replace email submissions with a guided, mandatory photo checklist.",
-  keywords: ["Hertz", "Malta", "check-in", "vehicle", "photo", "car rental", "documentation"],
+  title: "Hertz Malta — Admin Dashboard",
+  description: "Vehicle Photo Check-in Portal — Admin Dashboard for managing rental contracts, generating tokens, and uploading checkout reports.",
+  keywords: ["Hertz", "Malta", "check-in", "vehicle", "photo", "car rental", "dashboard", "admin"],
   icons: {
     icon: "https://z-cdn.chatglm.cn/z-ai/static/logo.svg",
   },
