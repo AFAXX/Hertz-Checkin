@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/db';
+import { db } from '@/lib/db';
 import { uploadToSharePoint, isGraphConfigured } from '@/lib/graph-api';
 import { writeFile, mkdir } from 'fs/promises';
 import path from 'path';
@@ -21,8 +21,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Validate token
-    const accessToken = await prisma.accessToken.findUnique({
+    const accessToken = await db.accessToken.findUnique({
       where: { token },
       include: {
         rentalContract: {
@@ -49,7 +48,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Validate file type
     const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/heic'];
     if (!allowedTypes.includes(file.type)) {
       return NextResponse.json(
@@ -58,7 +56,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Validate file size (max 10MB)
     const maxSize = 10 * 1024 * 1024;
     if (file.size > maxSize) {
       return NextResponse.json(
@@ -67,29 +64,24 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Convert file to buffer
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
 
-    // Generate unique filename
     const ext = file.name.split('.').pop() || 'jpg';
     const uniqueId = crypto.randomUUID();
     const fileName = `${accessToken.rentalContract.contractNumber}_${requirementId}_${uniqueId}.${ext}`;
 
-    // Determine upload path - use /tmp on Vercel, process.cwd() locally
     const isVercel = !!process.env.VERCEL;
     const baseDir = isVercel
       ? '/tmp/uploads'
       : path.join(process.cwd(), 'uploads');
     const contractDir = path.join(baseDir, accessToken.rentalContract.contractNumber);
 
-    // Ensure directory exists (FIX: recursive: true)
     await mkdir(contractDir, { recursive: true });
 
     let photoUrl = '';
     let storageType: 'sharepoint' | 'local' = 'local';
 
-    // Try Graph API first
     if (isGraphConfigured()) {
       try {
         photoUrl = await uploadToSharePoint(buffer, fileName, accessToken.rentalContract.contractNumber);
@@ -99,7 +91,6 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Fallback: save locally
     if (!photoUrl) {
       const filePath = path.join(contractDir, fileName);
       await writeFile(filePath, buffer);
@@ -107,8 +98,7 @@ export async function POST(request: NextRequest) {
       storageType = 'local';
     }
 
-    // Save to database
-    const submission = await prisma.photoSubmission.create({
+    const submission = await db.photoSubmission.create({
       data: {
         rentalContractId: accessToken.rentalContract.id,
         photoRequirementId: requirementId,
@@ -121,8 +111,7 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    // Update contract status to in_progress
-    await prisma.rentalContract.update({
+    await db.rentalContract.update({
       where: { id: accessToken.rentalContract.id },
       data: { status: 'in_progress' },
     });
