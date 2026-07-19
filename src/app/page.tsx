@@ -4,57 +4,28 @@ import { useState, useEffect, useRef } from 'react';
 import { t, LOCALES, type Locale } from '@/lib/i18n';
 
 interface AdminContract {
-  id: string;
-  contractNumber: string;
-  customerName: string;
-  customerEmail: string | null;
-  customerPhone: string | null;
-  vehiclePlate: string;
-  vehicleModel: string;
-  vehicleColor: string | null;
-  status: string;
-  createdAt: string;
+  id: string; contractNumber: string; customerName: string; customerEmail: string | null; customerPhone: string | null;
+  vehiclePlate: string; vehicleModel: string; vehicleColor: string | null; status: string; createdAt: string;
   tokens: Array<{ id: string; token: string; expiresAt: string; usedAt: string | null; isExpired: boolean }>;
-  photosSubmitted: number;
-  photos: Array<{ key: string; label: string; fileName: string; uploadedAt: string }>;
+  photosSubmitted: number; photos: Array<{ key: string; label: string; fileName: string; uploadedAt: string }>;
 }
-
 interface ChecklistItem {
-  id: string;
-  key: string;
-  label: string;
-  labelEn: string | null;
-  description: string | null;
-  icon: string | null;
-  required: boolean;
-  completed: boolean;
-  photoCount: number;
+  id: string; key: string; label: string; labelEn: string | null; description: string | null; icon: string | null;
+  required: boolean; completed: boolean; photoCount: number;
 }
-
 interface ValidatedContract {
-  id: string;
-  contractNumber: string;
-  customerName: string;
-  vehiclePlate: string;
-  vehicleModel: string;
-  vehicleColor: string | null;
-  status: string;
+  id: string; contractNumber: string; customerName: string; vehiclePlate: string; vehicleModel: string; vehicleColor: string | null; status: string;
 }
 
 const MAX_PHOTOS = 10;
 
-function CarDiagram({ onSelect, photoCounts }: {
-  onSelect: (key: string) => void;
-  photoCounts: Record<string, number>;
-}) {
-  const getCount = (k: string) => photoCounts[k] || 0;
-
+function CarDiagram({ onSelect, photoCounts }: { onSelect: (key: string) => void; photoCounts: Record<string, number> }) {
+  const g = (k: string) => photoCounts[k] || 0;
+  const done = (k: string) => g(k) > 0;
   return (
     <svg viewBox="0 0 300 540" className="w-full max-w-[280px] mx-auto">
-      <path d="M108 510 Q60 490 48 430 L48 110 Q48 55 108 32 L192 32 Q252 55 252 110 L252 430 Q240 490 192 510 Z"
-        fill="rgba(0,0,0,0.06)" transform="translate(4,4)" />
-      <path d="M108 510 Q60 490 48 430 L48 110 Q48 55 108 32 L192 32 Q252 55 252 110 L252 430 Q240 490 192 510 Z"
-        fill="#f1f5f9" stroke="#94a3b8" strokeWidth="2.5" />
+      <path d="M108 510 Q60 490 48 430 L48 110 Q48 55 108 32 L192 32 Q252 55 252 110 L252 430 Q240 490 192 510 Z" fill="rgba(0,0,0,0.06)" transform="translate(4,4)" />
+      <path d="M108 510 Q60 490 48 430 L48 110 Q48 55 108 32 L192 32 Q252 55 252 110 L252 430 Q240 490 192 510 Z" fill="#f1f5f9" stroke="#94a3b8" strokeWidth="2.5" />
       <path d="M120 430 L120 490 Q150 510 180 490 L180 430 Q150 420 120 430 Z" fill="#e2e8f0" stroke="#94a3b8" strokeWidth="1" opacity="0.5" />
       <path d="M95 390 Q150 410 205 390 L185 350 Q150 365 115 350 Z" fill="#bfdbfe" stroke="#60a5fa" strokeWidth="1.5" />
       <rect x="80" y="180" width="140" height="170" rx="20" fill="#e8ecf1" stroke="#b0b8c4" strokeWidth="1" />
@@ -76,25 +47,20 @@ function CarDiagram({ onSelect, photoCounts }: {
       <ellipse cx="232" cy="420" rx="8" ry="13" fill="#64748b" />
 
       <g onClick={() => onSelect('front')} style={{ cursor: 'pointer' }}>
-        <rect x="90" y="435" width="120" height="60" rx="10" fill={getCount('front') > 0 ? 'rgba(34,197,94,0.15)' : 'rgba(148,163,184,0.05)'} stroke={getCount('front') > 0 ? '#22c55e' : '#94a3b8'} strokeWidth="1.5" strokeDasharray={getCount('front') > 0 ? 'none' : '5 3'} />
-        {getCount('front') > 0 && <><circle cx="200" cy="445" r="9" fill="#22c55e" /><text x="200" y="449" textAnchor="middle" fill="white" fontSize="9" fontWeight="bold">{getCount('front')}</text></>}
+        <rect x="90" y="435" width="120" height="60" rx="10" fill={done('front') ? 'rgba(34,197,94,0.15)' : 'rgba(148,163,184,0.05)'} stroke={done('front') ? '#22c55e' : '#94a3b8'} strokeWidth="1.5" strokeDasharray={done('front') ? 'none' : '5 3'} />
+        {g('front') > 0 && <><circle cx="200" cy="445" r="9" fill="#22c55e" /><text x="200" y="449" textAnchor="middle" fill="white" fontSize="9" fontWeight="bold">{g('front')}</text></>}
       </g>
       <g onClick={() => onSelect('back')} style={{ cursor: 'pointer' }}>
-        <rect x="90" y="75" width="120" height="60" rx="10" fill={getCount('back') > 0 ? 'rgba(34,197,94,0.15)' : 'rgba(148,163,184,0.05)'} stroke={getCount('back') > 0 ? '#22c55e' : '#94a3b8'} strokeWidth="1.5" strokeDasharray={getCount('back') > 0 ? 'none' : '5 3'} />
-        {getCount('back') > 0 && <><circle cx="200" cy="85" r="9" fill="#22c55e" /><text x="200" y="89" textAnchor="middle" fill="white" fontSize="9" fontWeight="bold">{getCount('back')}</text></>}
+        <rect x="90" y="75" width="120" height="60" rx="10" fill={done('back') ? 'rgba(34,197,94,0.15)' : 'rgba(148,163,184,0.05)'} stroke={done('back') ? '#22c55e' : '#94a3b8'} strokeWidth="1.5" strokeDasharray={done('back') ? 'none' : '5 3'} />
+        {g('back') > 0 && <><circle cx="200" cy="85" r="9" fill="#22c55e" /><text x="200" y="89" textAnchor="middle" fill="white" fontSize="9" fontWeight="bold">{g('back')}</text></>}
       </g>
       <g onClick={() => onSelect('passenger_side')} style={{ cursor: 'pointer' }}>
-        <rect x="28" y="195" width="50" height="130" rx="10" fill={getCount('passenger_side') > 0 ? 'rgba(34,197,94,0.15)' : 'rgba(148,163,184,0.05)'} stroke={getCount('passenger_side') > 0 ? '#22c55e' : '#94a3b8'} strokeWidth="1.5" strokeDasharray={getCount('passenger_side') > 0 ? 'none' : '5 3'} />
-        {getCount('passenger_side') > 0 && <><circle cx="68" cy="205" r="9" fill="#22c55e" /><text x="68" y="209" textAnchor="middle" fill="white" fontSize="9" fontWeight="bold">{getCount('passenger_side')}</text></>}
+        <rect x="28" y="195" width="50" height="130" rx="10" fill={done('passenger_side') ? 'rgba(34,197,94,0.15)' : 'rgba(148,163,184,0.05)'} stroke={done('passenger_side') ? '#22c55e' : '#94a3b8'} strokeWidth="1.5" strokeDasharray={done('passenger_side') ? 'none' : '5 3'} />
+        {g('passenger_side') > 0 && <><circle cx="68" cy="205" r="9" fill="#22c55e" /><text x="68" y="209" textAnchor="middle" fill="white" fontSize="9" fontWeight="bold">{g('passenger_side')}</text></>}
       </g>
       <g onClick={() => onSelect('driver_side')} style={{ cursor: 'pointer' }}>
-        <rect x="222" y="195" width="50" height="130" rx="10" fill={getCount('driver_side') > 0 ? 'rgba(34,197,94,0.15)' : 'rgba(148,163,184,0.05)'} stroke={getCount('driver_side') > 0 ? '#22c55e' : '#94a3b8'} strokeWidth="1.5" strokeDasharray={getCount('driver_side') > 0 ? 'none' : '5 3'} />
-        {getCount('driver_side') > 0 && <><circle cx="262" cy="205" r="9" fill="#22c55e" /><text x="262" y="209" textAnchor="middle" fill="white" fontSize="9" fontWeight="bold">{getCount('driver_side')}</text></>}
-      </g>
-      <g onClick={() => onSelect('interior')} style={{ cursor: 'pointer' }}>
-        <rect x="100" y="230" width="100" height="90" rx="14" fill={getCount('interior') > 0 ? 'rgba(34,197,94,0.15)' : 'rgba(59,130,246,0.06)'} stroke={getCount('interior') > 0 ? '#22c55e' : '#60a5fa'} strokeWidth="1.5" strokeDasharray={getCount('interior') > 0 ? 'none' : '5 3'} />
-        <text x="150" y="268" textAnchor="middle" fill={getCount('interior') > 0 ? '#22c55e' : '#60a5fa'} fontSize="11" fontWeight="600">INT.</text>
-        {getCount('interior') > 0 && <><circle cx="190" cy="238" r="9" fill="#22c55e" /><text x="190" y="242" textAnchor="middle" fill="white" fontSize="9" fontWeight="bold">{getCount('interior')}</text></>}
+        <rect x="222" y="195" width="50" height="130" rx="10" fill={done('driver_side') ? 'rgba(34,197,94,0.15)' : 'rgba(148,163,184,0.05)'} stroke={done('driver_side') ? '#22c55e' : '#94a3b8'} strokeWidth="1.5" strokeDasharray={done('driver_side') ? 'none' : '5 3'} />
+        {g('driver_side') > 0 && <><circle cx="262" cy="205" r="9" fill="#22c55e" /><text x="262" y="209" textAnchor="middle" fill="white" fontSize="9" fontWeight="bold">{g('driver_side')}</text></>}
       </g>
 
       <text x="150" y="525" textAnchor="middle" fill="#475569" fontSize="11" fontWeight="700" letterSpacing="1">FRONT</text>
@@ -109,7 +75,6 @@ export default function Home() {
   const [locale, setLocale] = useState<Locale>('it');
   const [mode, setMode] = useState<'loading' | 'admin' | 'customer' | 'completed'>('loading');
   const [token, setToken] = useState('');
-
   const [contracts, setContracts] = useState<AdminContract[]>([]);
   const [showCreate, setShowCreate] = useState(false);
   const [createForm, setCreateForm] = useState({ contractNumber: '', customerName: '', customerEmail: '', customerPhone: '', vehiclePlate: '', vehicleModel: '', vehicleColor: '' });
@@ -118,7 +83,6 @@ export default function Home() {
   const [tokenDialog, setTokenDialog] = useState<{ contractId: string; contractNumber: string } | null>(null);
   const [generatedToken, setGeneratedToken] = useState<{ token: string; expiresAt: string; link: string } | null>(null);
   const [copied, setCopied] = useState('');
-
   const [contract, setContract] = useState<ValidatedContract | null>(null);
   const [checklist, setChecklist] = useState<ChecklistItem[]>([]);
   const [photoCounts, setPhotoCounts] = useState<Record<string, number>>({});
@@ -127,20 +91,12 @@ export default function Home() {
   const [uploadingPhoto, setUploadingPhoto] = useState<string | null>(null);
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const hash = window.location.hash;
-    if (hash.startsWith('#token=')) {
-      const tk = hash.replace('#token=', '');
-      setToken(tk);
-      setMode('customer');
-      validateToken(tk);
-    } else {
-      setMode('admin');
-      loadContracts();
-    }
+    if (hash.startsWith('#token=')) { const tk = hash.replace('#token=', ''); setToken(tk); setMode('customer'); validateToken(tk); }
+    else { setMode('admin'); loadContracts(); }
   }, []);
 
   const validateToken = async (tk: string) => {
@@ -149,8 +105,7 @@ export default function Home() {
       const res = await fetch('/api/token/validate', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token: tk }) });
       const data = await res.json();
       if (!res.ok) { setError(data.error || 'Invalid token'); if (res.status === 410) setMode('completed'); return; }
-      setContract(data.contract);
-      setChecklist(data.photoChecklist);
+      setContract(data.contract); setChecklist(data.photoChecklist);
       const counts: Record<string, number> = {};
       data.photoChecklist.forEach((item: ChecklistItem) => { counts[item.key] = item.photoCount; });
       setPhotoCounts(counts);
@@ -162,9 +117,10 @@ export default function Home() {
     if (count >= MAX_PHOTOS) { setError('Massimo ' + MAX_PHOTOS + ' foto per questo angolo.'); return; }
     const item = checklist.find(c => c.key === key);
     if (!item) return;
-    setActiveKey(key);
-    setError('');
-    setTimeout(() => fileInputRef.current?.click(), 100);
+    setActiveKey(key); setError('');
+    // CRITICAL: reset value BEFORE clicking so camera reopens on mobile
+    if (fileInputRef.current) fileInputRef.current.value = '';
+    setTimeout(() => fileInputRef.current?.click(), 150);
   };
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -188,12 +144,11 @@ export default function Home() {
       } catch (err: unknown) { setError(err instanceof Error ? err.message : 'Upload failed'); }
       finally { setUploadingPhoto(null); }
     }
+    // Reset AFTER upload so next openCamera call works
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
   const totalPhotos = Object.values(photoCounts).reduce((s, c) => s + c, 0);
-  const totalRequired = checklist.filter(c => c.required).length;
-  const doneRequired = checklist.filter(c => c.required && c.completed).length;
 
   const handleSubmit = async () => {
     if (totalPhotos === 0 || isSubmitting) return;
@@ -207,50 +162,33 @@ export default function Home() {
     finally { setIsSubmitting(false); }
   };
 
-  const loadContracts = async () => {
-    try { const r = await fetch('/api/admin/contracts'); if (r.ok) { const d = await r.json(); setContracts(d.contracts || []); } } catch {}
-  };
-
+  const loadContracts = async () => { try { const r = await fetch('/api/admin/contracts'); if (r.ok) setContracts((await r.json()).contracts || []); } catch {} };
   const handleCreateContract = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
       const r = await fetch('/api/admin/contracts', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(createForm) });
       const d = await r.json(); if (!r.ok) throw new Error(d.error);
       setShowCreate(false); setCreateForm({ contractNumber: '', customerName: '', customerEmail: '', customerPhone: '', vehiclePlate: '', vehicleModel: '', vehicleColor: '' });
-      if (d.accessToken) setGeneratedToken(d.accessToken);
-      loadContracts();
+      if (d.accessToken) setGeneratedToken(d.accessToken); loadContracts();
     } catch (err: unknown) { alert(err instanceof Error ? err.message : 'Failed'); }
   };
-
   const handleGenerateToken = async (cid: string) => {
-    try {
-      const r = await fetch('/api/admin/tokens', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ contractId: cid }) });
-      const d = await r.json(); if (!r.ok) throw new Error(d.error); setGeneratedToken(d.accessToken);
-    } catch (err: unknown) { alert(err instanceof Error ? err.message : 'Failed'); }
+    try { const r = await fetch('/api/admin/tokens', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ contractId: cid }) }); const d = await r.json(); if (!r.ok) throw new Error(d.error); setGeneratedToken(d.accessToken); }
+    catch (err: unknown) { alert(err instanceof Error ? err.message : 'Failed'); }
   };
-
   const handleBulkUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]; if (!file) return;
-    setUploading(true); setBulkResult(null);
-    try {
-      const fd = new FormData(); fd.append('file', file);
-      const r = await fetch('/api/admin/bulk-upload', { method: 'POST', body: fd });
-      const d = await r.json(); if (!r.ok) throw new Error(d.error);
-      setBulkResult(d); loadContracts();
-    } catch (err: unknown) { alert(err instanceof Error ? err.message : 'Failed'); }
+    const file = e.target.files?.[0]; if (!file) return; setUploading(true); setBulkResult(null);
+    try { const fd = new FormData(); fd.append('file', file); const r = await fetch('/api/admin/bulk-upload', { method: 'POST', body: fd }); const d = await r.json(); if (!r.ok) throw new Error(d.error); setBulkResult(d); loadContracts(); }
+    catch (err: unknown) { alert(err instanceof Error ? err.message : 'Failed'); }
     finally { setUploading(false); if (e.target) e.target.value = ''; }
   };
-
   const copyToClip = (text: string, id: string) => { navigator.clipboard.writeText(text); setCopied(id); setTimeout(() => setCopied(''), 2000); };
-
   const statusBadge = (s: string) => s === 'completed' ? 'bg-green-100 text-green-800' : s === 'in_progress' ? 'bg-yellow-100 text-yellow-800' : 'bg-gray-100 text-gray-600';
 
-  if (mode === 'loading') return (
-    <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: '#1a1a1a' }}>
-      <div className="animate-spin h-10 w-10 border-4 border-yellow-400 border-t-transparent rounded-full" />
-    </div>
-  );
+  /* LOADING */
+  if (mode === 'loading') return (<div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: '#1a1a1a' }}><div className="animate-spin h-10 w-10 border-4 border-yellow-400 border-t-transparent rounded-full" /></div>);
 
+  /* COMPLETED */
   if (mode === 'completed') return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-50 to-emerald-100 p-4">
       <div className="bg-white rounded-2xl shadow-xl p-8 max-w-md w-full text-center">
@@ -258,25 +196,21 @@ export default function Home() {
           <svg className="w-10 h-10 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 13l4 4L19 7" /></svg>
         </div>
         <h1 className="text-2xl font-bold text-gray-900 mb-2">{t(locale, 'confirm.title')}</h1>
-        <p className="text-gray-600 mb-1">{t(locale, 'confirm.subtitle')}</p>
-        <p className="text-gray-500 text-sm mt-4">{t(locale, 'confirm.message')}</p>
-        <div className="mt-8 p-4 bg-gray-50 rounded-xl">
-          <p className="text-gray-500 text-xs">Grazie per aver scelto Hertz Malta</p>
-        </div>
+        <p className="text-gray-600">{t(locale, 'confirm.subtitle')}</p>
+        <div className="mt-8 p-4 bg-gray-50 rounded-xl"><p className="text-gray-500 text-xs">Grazie per aver scelto Hertz Malta</p></div>
       </div>
     </div>
   );
 
+  /* CUSTOMER */
   if (mode === 'customer') return (
     <div className="min-h-screen bg-gray-50">
       <input ref={fileInputRef} type="file" accept="image/*" capture="environment" multiple onChange={handleFileChange} className="hidden" />
-      <div className="shadow-sm border-b border-gray-100" style={{ backgroundColor: '#1a1a1a' }}>
+
+      <div style={{ backgroundColor: '#1a1a1a' }}>
         <div className="max-w-lg mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-lg font-bold text-white">HERTZ MALTA</h1>
-              <p className="text-xs" style={{ color: '#FFCB05' }}>{t(locale, 'app.title')}</p>
-            </div>
+            <div><h1 className="text-lg font-bold text-white">HERTZ MALTA</h1><p className="text-xs" style={{ color: '#FFCB05' }}>{t(locale, 'app.title')}</p></div>
             {contract && <div className="text-right"><p className="text-xs text-gray-400">{t(locale, 'confirm.contract')}</p><p className="text-sm font-semibold text-white">{contract.contractNumber}</p></div>}
           </div>
           {contract && (
@@ -289,29 +223,31 @@ export default function Home() {
           )}
         </div>
       </div>
+
       <div className="max-w-lg mx-auto px-4 py-6 space-y-5">
-        {error && <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl text-sm flex items-start gap-2"><span>!</span><span className="flex-1">{error}</span><button onClick={() => setError('')} className="font-bold text-red-400">x</button></div>}
+        {error && <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl text-sm flex items-start gap-2"><span>!</span><span className="flex-1">{error}</span><button onClick={() => setError('')} className="font-bold text-red-400 ml-2">x</button></div>}
+
         <div className="bg-white rounded-2xl shadow-sm p-4 border border-gray-100">
-          <p className="text-xs text-gray-400 text-center mb-2">Tocca un lato per scattare &middot; max {MAX_PHOTOS} foto per zona</p>
           <CarDiagram onSelect={openCamera} photoCounts={photoCounts} />
         </div>
+
         <div className="space-y-2">
           {checklist.map(item => {
             const count = photoCounts[item.key] || 0;
             const full = count >= MAX_PHOTOS;
-            const uploading = uploadingPhoto === item.key;
+            const isUploading = uploadingPhoto === item.key;
             const previews = localPreviews[item.key] || [];
             return (
               <div key={item.id} onClick={() => !full && openCamera(item.key)} className={'bg-white rounded-xl p-3 border-2 cursor-pointer transition-all active:scale-[0.98] ' + (full ? 'border-red-200 bg-red-50/60' : count > 0 ? 'border-green-300 bg-green-50/60' : 'border-gray-200 hover:border-yellow-300')}>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <div className={'w-9 h-9 rounded-full flex items-center justify-center text-sm ' + (full ? 'bg-red-100' : count > 0 ? 'bg-green-100' : 'bg-gray-100')}>
-                      {uploading ? <div className="animate-spin h-4 w-4 border-2 border-yellow-500 border-t-transparent rounded-full" /> : full ? '\uD83D\uDD1D' : count > 0 ? '\u2713' : '\uD83D\uDCF7'}
+                      {isUploading ? <div className="animate-spin h-4 w-4 border-2 border-yellow-500 border-t-transparent rounded-full" /> : full ? '\uD83D\uDD1D' : count > 0 ? '\u2713' : '\uD83D\uDCF7'}
                     </div>
                     <div><p className="font-semibold text-gray-800 text-sm">{item.label}</p><p className="text-xs text-gray-500">{count}/{MAX_PHOTOS} foto</p></div>
                   </div>
-                  <div className={'px-2.5 py-1 rounded-full text-xs font-medium ' + (full ? 'bg-red-100 text-red-700' : uploading ? 'bg-yellow-100 text-yellow-800' : count > 0 ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-500')}>
-                    {full ? 'Completo' : uploading ? 'Uploading...' : count > 0 ? 'Aggiungi' : 'Scatta'}
+                  <div className={'px-2.5 py-1 rounded-full text-xs font-medium ' + (full ? 'bg-red-100 text-red-700' : isUploading ? 'bg-yellow-100 text-yellow-800' : count > 0 ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-500')}>
+                    {full ? 'Completo' : isUploading ? 'Uploading...' : count > 0 ? 'Aggiungi' : 'Scatta'}
                   </div>
                 </div>
                 {previews.length > 0 && (
@@ -324,21 +260,28 @@ export default function Home() {
             );
           })}
         </div>
+
         {totalPhotos > 0 && (
-          <button onClick={handleSubmit} disabled={isSubmitting} className={'w-full py-4 rounded-xl text-white font-bold text-lg transition-all shadow-lg ' + (isSubmitting ? 'bg-gray-400 cursor-not-allowed' : 'hover:scale-[1.01] active:scale-[0.98]')} style={{ backgroundColor: isSubmitting ? undefined : '#1a1a1a' }}>
-            {isSubmitting ? <span className="flex items-center justify-center gap-2"><span className="animate-spin h-5 w-5 border-2 border-white border-t-transparent rounded-full" />{t(locale, 'checklist.submitting')}</span> : <span className="flex items-center justify-center gap-2">{t(locale, 'checklist.submitCheckin')}<span className="text-sm font-normal opacity-60">({totalPhotos} foto)</span></span>}
+          <button onClick={handleSubmit} disabled={isSubmitting}
+            className="w-full py-5 rounded-2xl text-white font-extrabold text-lg tracking-wide transition-all shadow-lg shadow-green-200 hover:shadow-xl active:scale-[0.98]"
+            style={{ backgroundColor: isSubmitting ? '#9ca3af' : '#16a34a' }}>
+            {isSubmitting
+              ? <span className="flex items-center justify-center gap-2"><span className="animate-spin h-5 w-5 border-2 border-white border-t-transparent rounded-full" />Invio in corso...</span>
+              : <span>COMPLETE INSPECTION<span className="block text-sm font-normal opacity-80 mt-0.5">{totalPhotos} foto pronte</span></span>
+            }
           </button>
         )}
-        {totalPhotos === 0 && <p className="text-center text-xs text-gray-400">Scatta almeno una foto per inviare il report</p>}
+        {totalPhotos === 0 && <p className="text-center text-xs text-gray-400">Scatta almeno una foto per completare l'ispezione</p>}
       </div>
-      <div className="h-8" />
+      <div className="h-10" />
     </div>
   );
 
+  /* ADMIN */
   return (
     <div className="min-h-screen" style={{ backgroundColor: '#f5f5f0' }}>
       <div className="fixed top-3 right-3 z-50">
-        <select value={locale} onChange={e => setLocale(e.target.value as Locale)} className="text-xs border border-gray-300 rounded-lg px-2 py-1.5 bg-white shadow-sm cursor-pointer">
+        <select value={locale} onChange={e => setLocale(e.target.value as Locale)} className="text-xs border border-gray-300 rounded-lg px-2 py-1.5 bg-white shadow-sm">
           {LOCALES.map(l => <option key={l.code} value={l.code}>{l.nativeName}</option>)}
         </select>
       </div>
@@ -364,7 +307,7 @@ export default function Home() {
         </div>
         <div className="flex flex-wrap gap-3 mb-6">
           <button onClick={() => setShowCreate(true)} className="text-sm font-medium px-4 py-2 rounded-lg text-white" style={{ backgroundColor: '#1a1a1a' }}>+ {t(locale, 'admin.newContract')}</button>
-          <label className="cursor-pointer text-sm font-medium px-4 py-2 rounded-lg border flex items-center gap-2 bg-white" style={{ borderColor: '#ccc', color: '#333' }}>
+          <label className="cursor-pointer text-sm font-medium px-4 py-2 rounded-lg border bg-white flex items-center gap-2" style={{ borderColor: '#ccc', color: '#333' }}>
             {uploading ? t(locale, 'admin.processing') : t(locale, 'admin.bulkUpload')}
             <input type="file" accept=".xlsx,.xls,.csv" onChange={handleBulkUpload} className="hidden" disabled={uploading} />
           </label>
@@ -375,8 +318,8 @@ export default function Home() {
             <h3 className="font-semibold text-gray-800 mb-2">{t(locale, 'admin.uploadSuccess')}</h3>
             <p className="text-sm text-gray-600">{bulkResult.summary.created} {t(locale, 'admin.created')}, {bulkResult.summary.skipped} {t(locale, 'admin.skipped')}, {bulkResult.summary.errors} {t(locale, 'admin.errors')}</p>
             <details className="mt-2"><summary className="text-xs text-gray-500 cursor-pointer">{t(locale, 'admin.results')}</summary>
-              <div className="mt-2 max-h-40 overflow-y-auto text-xs text-gray-600 space-y-1">
-                {bulkResult.results?.map((r: any, i: number) => <div key={i} className={r.status === 'error' ? 'text-red-600' : r.status === 'skipped' ? 'text-yellow-600' : 'text-green-600'}>Row {r.row}: {r.contractNumber} - {r.customerName} [{r.status}] {r.token && <span>- token: {r.link}</span>} {r.error && <span>- {r.error}</span>}</div>)}
+              <div className="mt-2 max-h-40 overflow-y-auto text-xs space-y-1">
+                {bulkResult.results?.map((r: any, i: number) => <div key={i} className={r.status === 'error' ? 'text-red-600' : r.status === 'skipped' ? 'text-yellow-600' : 'text-green-600'}>Row {r.row}: {r.contractNumber} - {r.customerName} [{r.status}]{r.error && ' - ' + r.error}</div>)}
               </div>
             </details>
             <button onClick={() => setBulkResult(null)} className="mt-2 text-xs text-gray-400">Chiudi</button>
@@ -389,7 +332,7 @@ export default function Home() {
               <p className="text-xs text-gray-500 mb-4">{t(locale, 'admin.newContractDesc')}</p>
               <div className="space-y-3">
                 {[{ key: 'contractNumber', label: t(locale, 'admin.contractNumber'), required: true },{ key: 'customerName', label: t(locale, 'admin.customerName'), required: true },{ key: 'vehiclePlate', label: t(locale, 'admin.vehiclePlate') },{ key: 'vehicleModel', label: t(locale, 'admin.vehicleModel') },{ key: 'customerEmail', label: t(locale, 'admin.customerEmail') },{ key: 'customerPhone', label: t(locale, 'admin.customerPhone') },{ key: 'vehicleColor', label: t(locale, 'admin.vehicleColor') }].map(f => (
-                  <div key={f.key}><label className="block text-xs font-medium text-gray-600 mb-1">{f.label} {f.required && '*'}</label><input type="text" value={(createForm as any)[f.key]} onChange={e => setCreateForm(p => ({ ...p, [f.key]: e.target.value }))} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" required={f.required} /></div>
+                  <div key={f.key}><label className="block text-xs font-medium text-gray-600 mb-1">{f.label}{f.required && '*'}</label><input type="text" value={(createForm as any)[f.key]} onChange={e => setCreateForm(p => ({ ...p, [f.key]: e.target.value }))} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" required={f.required} /></div>
                 ))}
               </div>
               <div className="flex gap-2 mt-5">
@@ -404,8 +347,7 @@ export default function Home() {
             <div onClick={e => e.stopPropagation()} className="bg-white rounded-2xl p-6 shadow-xl max-w-md w-full">
               {generatedToken ? (<>
                 <h2 className="font-semibold text-gray-800 mb-1 text-lg">{t(locale, 'admin.linkGenerated')}</h2>
-                <p className="text-xs text-gray-500 mb-4">{t(locale, 'admin.linkGeneratedDesc')}</p>
-                <div className="rounded-xl p-3 break-all text-sm font-mono mb-4" style={{ backgroundColor: '#f5f5f0', color: '#1a1a1a' }}>{window.location.origin}{generatedToken.link}</div>
+                <div className="rounded-xl p-3 break-all text-sm font-mono mb-4" style={{ backgroundColor: '#f5f5f0' }}>{window.location.origin}{generatedToken.link}</div>
                 <div className="flex gap-2">
                   <button onClick={() => copyToClip(window.location.origin + generatedToken.link, 'dialog')} className="flex-1 text-white py-2.5 rounded-lg text-sm font-medium" style={{ backgroundColor: '#1a1a1a' }}>{copied === 'dialog' ? 'Copiato!' : t(locale, 'admin.copyLink')}</button>
                   <button onClick={() => { setGeneratedToken(null); setTokenDialog(null); }} className="px-4 py-2.5 bg-gray-100 text-gray-700 rounded-lg text-sm">Chiudi</button>
@@ -421,14 +363,11 @@ export default function Home() {
         <div className="bg-white rounded-xl shadow-sm overflow-hidden" style={{ border: '1px solid #e5e5e5' }}>
           <div className="px-6 py-4 border-b" style={{ borderColor: '#e5e5e5', backgroundColor: '#fafaf5' }}>
             <h2 className="font-semibold text-gray-800">{t(locale, 'admin.contracts')}</h2>
-            <p className="text-xs text-gray-500 mt-0.5">{t(locale, 'admin.contractsDesc')}</p>
           </div>
           {contracts.length === 0 ? <div className="p-8 text-center text-gray-400">{t(locale, 'admin.noContracts')}</div> : (
             <div className="overflow-x-auto">
               <table className="w-full">
-                <thead><tr style={{ backgroundColor: '#1a1a1a' }}>
-                  {['Contract','Client','Vehicle','Status','Photos','Tokens / Links','Actions'].map(h => <th key={h} className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase">{h}</th>)}
-                </tr></thead>
+                <thead><tr style={{ backgroundColor: '#1a1a1a' }}>{['Contract','Client','Vehicle','Status','Photos','Tokens','Actions'].map(h => <th key={h} className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase">{h}</th>)}</tr></thead>
                 <tbody className="divide-y" style={{ borderColor: '#f0f0f0' }}>
                   {contracts.map(c => (
                     <tr key={c.id} className="hover:bg-gray-50">
@@ -441,13 +380,11 @@ export default function Home() {
                         <div className="space-y-1.5">
                           {c.tokens.map(tk => {
                             const link = window.location.origin + '/#token=' + tk.token;
-                            return (
-                              <div key={tk.id} className="flex items-center gap-1.5">
-                                <span className={'w-1.5 h-1.5 rounded-full flex-shrink-0 ' + (tk.usedAt ? 'bg-gray-300' : tk.isExpired ? 'bg-red-400' : 'bg-green-400')} />
-                                <span className="text-xs text-gray-500">{tk.usedAt ? 'Usato' : tk.isExpired ? 'Scaduto' : 'Attivo'}</span>
-                                <button onClick={() => copyToClip(link, tk.id)} className="text-xs px-1.5 py-0.5 rounded font-medium" style={{ backgroundColor: copied === tk.id ? '#22c55e' : '#FFCB05', color: copied === tk.id ? '#fff' : '#1a1a1a' }}>{copied === tk.id ? 'OK' : 'Copia'}</button>
-                              </div>
-                            );
+                            return (<div key={tk.id} className="flex items-center gap-1.5">
+                              <span className={'w-1.5 h-1.5 rounded-full ' + (tk.usedAt ? 'bg-gray-300' : tk.isExpired ? 'bg-red-400' : 'bg-green-400')} />
+                              <span className="text-xs text-gray-500">{tk.usedAt ? 'Usato' : tk.isExpired ? 'Scaduto' : 'Attivo'}</span>
+                              <button onClick={() => copyToClip(link, tk.id)} className="text-xs px-1.5 py-0.5 rounded font-medium" style={{ backgroundColor: copied === tk.id ? '#22c55e' : '#FFCB05', color: copied === tk.id ? '#fff' : '#1a1a1a' }}>{copied === tk.id ? 'OK' : 'Copia'}</button>
+                            </div>);
                           })}
                           {c.tokens.length === 0 && <span className="text-xs text-gray-400">Nessun token</span>}
                         </div>
