@@ -1,155 +1,146 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { db } from '@/lib/db'
-import { uploadToSharePoint } from '@/lib/graph-api'
-import { writeFile, mkdir } from 'fs/promises'
-import { join } from 'path'
-import { existsSync } from 'fs'
-import { randomUUID } from 'crypto'
+import { NextRequest, NextResponse } from 'next/server';
+import { prisma } from '@/lib/db';
+import { uploadToSharePoint, isGraphConfigured } from '@/lib/graph-api';
+import { writeFile, mkdir } from 'fs/promises';
+import path from 'path';
+import crypto from 'crypto';
 
-// Allow up to 30 seconds for upload (photo + Graph API)
-export const maxDuration = 30
-
-const UPLOAD_DIR = process.env.LOCAL_UPLOAD_DIR || './uploads'
+export const maxDuration = 30;
 
 export async function POST(request: NextRequest) {
   try {
-    const formData = await request.formData()
-    const file = formData.get('photo') as File | null
-    const token = formData.get('token') as string | null
-    const requirementId = formData.get('requirementId') as string | null
+    const formData = await request.formData();
+    const token = formData.get('token') as string;
+    const file = formData.get('photo') as File | null;
+    const requirementId = formData.get('requirementId') as string;
 
-    // Validate inputs
-    if (!file) {
-      return NextResponse.json({ error: 'Nessuna foto selezionata' }, { status: 400 })
+    if (!token || !file || !requirementId) {
+      return NextResponse.json(
+        { error: 'Missing required fields: token, photo, requirementId' },
+        { status: 400 }
+      );
     }
 
-    if (!token) {
-      return NextResponse.json({ error: 'Token mancante' }, { status: 400 })
+    // Validate token
+    const accessToken = await prisma.accessToken.findUnique({
+      where: { token },
+      include: {
+        rentalContract: {
+          include: { photoRequirements: true },
+        },
+      },
+    });
+
+    if (!accessToken) {
+      return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
     }
 
-    if (!requirementId) {
-      return NextResponse.json({ error: 'Requirement ID mancante' }, { status: 400 })
+    if (accessToken.used) {
+      return NextResponse.json(
+        { error: 'This token has already been used' },
+        { status: 403 }
+      );
+    }
+
+    if (new Date(accessToken.expiresAt) < new Date()) {
+      return NextResponse.json(
+        { error: 'Token expired' },
+        { status: 403 }
+      );
     }
 
     // Validate file type
-    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif']
-    if (!allowedTypes.includes(file.type) && !file.name.match(/\.(jpg|jpeg|png|webp|heic|heif)$/i)) {
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/heic'];
+    if (!allowedTypes.includes(file.type)) {
       return NextResponse.json(
-        { error: 'Formato non supportato. Usa JPG, PNG o WebP.' },
+        { error: `Invalid file type: ${file.type}. Allowed: ${allowedTypes.join(', ')}` },
         { status: 400 }
-      )
+      );
     }
 
-    // Validate file size (max 20MB)
-    const MAX_SIZE = 20 * 1024 * 1024
-    if (file.size > MAX_SIZE) {
+    // Validate file size (max 10MB)
+    const maxSize = 10 * 1024 * 1024;
+    if (file.size > maxSize) {
       return NextResponse.json(
-        { error: 'Foto troppo grande. Dimensione massima: 20MB.' },
+        { error: `File too large: ${(file.size / 1024 / 1024).toFixed(1)}MB. Max: 10MB` },
         { status: 400 }
-      )
+      );
     }
 
-    // Validate token and get contract info
-    const accessToken = await db.accessToken.findUnique({
-      where: { token },
-      include: { contract: true },
-    })
+    // Convert file to buffer
+    const bytes = await file.arrayBuffer();
+    const buffer = Buffer.from(bytes);
 
-    if (!accessToken) {
-      return NextResponse.json({ error: 'Token non valido' }, { status: 404 })
-    }
+    // Generate unique filename
+    const ext = file.name.split('.').pop() || 'jpg';
+    const uniqueId = crypto.randomUUID();
+    const fileName = `${accessToken.rentalContract.contractNumber}_${requirementId}_${uniqueId}.${ext}`;
 
-    if (accessToken.usedAt) {
-      return NextResponse.json({ error: 'Token già utilizzato' }, { status: 410 })
-    }
+    // Determine upload path - use /tmp on Vercel, process.cwd() locally
+    const isVercel = !!process.env.VERCEL;
+    const baseDir = isVercel
+      ? '/tmp/uploads'
+      : path.join(process.cwd(), 'uploads');
+    const contractDir = path.join(baseDir, accessToken.rentalContract.contractNumber);
 
-    if (new Date() > accessToken.expiresAt) {
-      return NextResponse.json({ error: 'Token scaduto. Contattare il personale Hertz.' }, { status: 410 })
-    }
+    // Ensure directory exists (FIX: recursive: true)
+    await mkdir(contractDir, { recursive: true });
 
-    // Validate requirement exists
-    const requirement = await db.photoRequirement.findUnique({
-      where: { id: requirementId },
-    })
+    let photoUrl = '';
+    let storageType: 'sharepoint' | 'local' = 'local';
 
-    if (!requirement) {
-      return NextResponse.json({ error: 'Requisito foto non trovato' }, { status: 404 })
-    }
-
-    // Multiple photos allowed per requirement — just insert a new submission
-
-    // Read file buffer
-    const buffer = Buffer.from(await file.arrayBuffer())
-
-    // Generate a unique file name
-    const ext = file.name.split('.').pop() || 'jpg'
-    const uniqueFileName = `${requirement.key}_${Date.now()}_${randomUUID().slice(0, 8)}.${ext}`
-
-    // Try Microsoft Graph API upload first (SharePoint/OneDrive)
-    const graphResult = await uploadToSharePoint(
-      uniqueFileName,
-      buffer,
-      accessToken.contract.contractNumber
-    )
-
-    let localPath: string | null = null
-    let graphItemId: string | null = null
-    let graphDriveId: string | null = null
-
-    if (graphResult) {
-      // Successfully uploaded to SharePoint
-      graphItemId = graphResult.graphItemId
-      graphDriveId = graphResult.graphDriveId
-      console.log(
-        `[PhotoUpload] Uploaded to SharePoint: ${graphResult.webUrl}`
-      )
-    } else {
-      // Fallback to local storage
-      console.log('[PhotoUpload] Graph API not available, using local storage')
-      const contractDir = join(UPLOAD_DIR, accessToken.contract.contractNumber)
-      if (!existsSync(contractDir)) {
-        await mkdir(contractDir, { recursive: true })
+    // Try Graph API first
+    if (isGraphConfigured()) {
+      try {
+        photoUrl = await uploadToSharePoint(buffer, fileName, accessToken.rentalContract.contractNumber);
+        storageType = 'sharepoint';
+      } catch (graphError) {
+        console.error('Graph API upload failed, falling back to local:', graphError);
       }
-      localPath = join(contractDir, uniqueFileName)
-      await writeFile(localPath, buffer)
     }
 
-    // Update contract status to in_progress if it was pending
-    if (accessToken.contract.status === 'pending') {
-      await db.rentalContract.update({
-        where: { id: accessToken.contractId },
-        data: { status: 'in_progress' },
-      })
+    // Fallback: save locally
+    if (!photoUrl) {
+      const filePath = path.join(contractDir, fileName);
+      await writeFile(filePath, buffer);
+      photoUrl = `/uploads/${accessToken.rentalContract.contractNumber}/${fileName}`;
+      storageType = 'local';
     }
 
-    // Save submission to database
-    const submission = await db.photoSubmission.create({
+    // Save to database
+    const submission = await prisma.photoSubmission.create({
       data: {
-        contractId: accessToken.contractId,
-        requirementId: requirementId,
-        fileName: uniqueFileName,
+        rentalContractId: accessToken.rentalContract.id,
+        photoRequirementId: requirementId,
+        photoUrl,
+        storageType,
+        fileName,
         fileSize: file.size,
         mimeType: file.type,
-        localPath,
-        graphItemId,
-        graphDriveId,
+        uploadedAt: new Date(),
       },
-    })
+    });
+
+    // Update contract status to in_progress
+    await prisma.rentalContract.update({
+      where: { id: accessToken.rentalContract.id },
+      data: { status: 'in_progress' },
+    });
 
     return NextResponse.json({
       success: true,
       submission: {
         id: submission.id,
+        photoUrl,
+        storageType,
         fileName: submission.fileName,
-        storedIn: graphResult ? 'sharepoint' : 'local',
       },
-    })
+    });
   } catch (error) {
-    console.error('Photo upload error:', error)
-    const msg = error instanceof Error ? error.message : 'Unknown error'
+    console.error('Photo upload error:', error);
     return NextResponse.json(
-      { error: `Errore durante il caricamento: ${msg}` },
+      { error: 'Failed to upload photo. Please try again.' },
       { status: 500 }
-    )
+    );
   }
 }
