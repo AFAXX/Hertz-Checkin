@@ -4,66 +4,39 @@ import { db } from '@/lib/db'
 const DEFAULT_REQUIREMENTS = [
   {
     key: 'front',
-    label: 'Vista anteriore',
-    labelEn: 'Front view',
-    description: 'Fotografare la parte anteriore del veicolo, inclusa la targa',
+    label: 'Front',
+    labelEn: 'Front',
+    description: 'Fotografare la parte anteriore del veicolo, inclusa la targa anteriore. Puoi scattare più foto.',
     orderIndex: 1,
     required: true,
     icon: 'CarFront',
   },
   {
-    key: 'rear',
-    label: 'Vista posteriore',
-    labelEn: 'Rear view',
-    description: 'Fotografare la parte posteriore del veicolo, inclusa la targa',
+    key: 'passenger_side',
+    label: 'Passenger Side',
+    labelEn: 'Passenger Side',
+    description: 'Fotografare il lato passeggero del veicolo per intero. Puoi scattare più foto.',
     orderIndex: 2,
     required: true,
-    icon: 'Car',
+    icon: 'ArrowRight',
   },
   {
-    key: 'left_side',
-    label: 'Fiancata sinistra',
-    labelEn: 'Left side',
-    description: 'Fotografare il lato sinistro del veicolo per intero',
+    key: 'driver_side',
+    label: 'Driver Side',
+    labelEn: 'Driver Side',
+    description: 'Fotografare il lato conducente del veicolo per intero. Puoi scattare più foto.',
     orderIndex: 3,
     required: true,
     icon: 'ArrowLeft',
   },
   {
-    key: 'right_side',
-    label: 'Fiancata destra',
-    labelEn: 'Right side',
-    description: 'Fotografare il lato destro del veicolo per intero',
+    key: 'back',
+    label: 'Back',
+    labelEn: 'Back',
+    description: 'Fotografare la parte posteriore del veicolo, inclusa la targa posteriore. Puoi scattare più foto.',
     orderIndex: 4,
     required: true,
-    icon: 'ArrowRight',
-  },
-  {
-    key: 'dashboard',
-    label: 'Cruscotto / Contachilometri',
-    labelEn: 'Dashboard / Odometer',
-    description: 'Fotografare il cruscotto con il contachilometri ben visibile',
-    orderIndex: 5,
-    required: true,
-    icon: 'Gauge',
-  },
-  {
-    key: 'fuel_level',
-    label: 'Livello carburante',
-    labelEn: 'Fuel level',
-    description: 'Fotografare l\'indicatore del livello carburante',
-    orderIndex: 6,
-    required: true,
-    icon: 'Fuel',
-  },
-  {
-    key: 'damage',
-    label: 'Danni preesistenti',
-    labelEn: 'Pre-existing damage',
-    description: 'Fotografare eventuali danni o ammaccature già presenti. Se non ci sono danni, fotografare un lato integro come conferma',
-    orderIndex: 7,
-    required: true,
-    icon: 'AlertTriangle',
+    icon: 'Car',
   },
 ]
 
@@ -88,13 +61,13 @@ export async function POST() {
 
     return NextResponse.json({
       success: true,
-      message: `Requisiti foto inizializzati: ${created} creati, ${skipped} già esistenti`,
+      message: `Photo requirements initialized: ${created} created, ${skipped} already exist`,
       total: DEFAULT_REQUIREMENTS.length,
     })
   } catch (error) {
     console.error('Seed error:', error)
     return NextResponse.json(
-      { error: 'Errore nell\'inizializzazione dei requisiti' },
+      { error: 'Error initializing photo requirements' },
       { status: 500 }
     )
   }

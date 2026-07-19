@@ -8,42 +8,42 @@ datasource db {
 }
 
 model RentalContract {
-  id             String     @id @default(cuid())
-  contractNumber String     @unique
-  customerName   String
-  customerEmail  String?
-  customerPhone  String?
-  vehiclePlate   String
-  vehicleModel   String
-  vehicleColor   String?
-  status         String     @default("pending")
-  createdAt      DateTime   @default(now())
-  updatedAt      DateTime   @updatedAt
+  id            String     @id @default(cuid())
+  contractNumber String    @unique
+  customerName  String
+  customerEmail String?
+  customerPhone String?
+  vehiclePlate  String
+  vehicleModel  String
+  vehicleColor  String?
+  status        String     @default("pending") // pending | in_progress | completed
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
 
-  tokens  AccessToken[]
-  photos  PhotoSubmission[]
+  tokens        AccessToken[]
+  photos        PhotoSubmission[]
 }
 
 model AccessToken {
-  id         String   @id @default(cuid())
-  token      String   @unique
-  contractId String
-  expiresAt  DateTime
-  usedAt     DateTime?
-  createdAt  DateTime @default(now())
+  id            String   @id @default(cuid())
+  token         String   @unique
+  contractId    String
+  expiresAt     DateTime
+  usedAt        DateTime?
+  createdAt     DateTime @default(now())
 
-  contract RentalContract @relation(fields: [contractId], references: [id], onDelete: Cascade)
+  contract      RentalContract @relation(fields: [contractId], references: [id], onDelete: Cascade)
 }
 
 model PhotoRequirement {
   id          String   @id @default(cuid())
-  key         String   @unique
-  label       String
-  labelEn     String?
-  description String?
-  orderIndex  Int      @default(0)
-  required    Boolean  @default(true)
-  icon        String?
+  key         String   @unique  // e.g. "front", "rear", "left_side"
+  label       String            // e.g. "Vista anteriore"
+  labelEn     String?           // English label
+  description String?           // Brief instructions
+  orderIndex  Int     @default(0)
+  required    Boolean @default(true)
+  icon        String?           // Lucide icon name
 
   submissions PhotoSubmission[]
 }
@@ -55,13 +55,14 @@ model PhotoSubmission {
   fileName      String
   fileSize      Int
   mimeType      String
+  // Local storage path (during development / fallback)
   localPath     String?
+  // Microsoft Graph API upload URL / item ID
   graphItemId   String?
   graphDriveId  String?
   uploadedAt    DateTime @default(now())
 
-  contract    RentalContract   @relation(fields: [contractId], references: [id], onDelete: Cascade)
-  requirement PhotoRequirement @relation(fields: [requirementId], references: [id], onDelete: Cascade)
-
-  @@unique([contractId, requirementId])
+  contract      RentalContract     @relation(fields: [contractId], references: [id], onDelete: Cascade)
+  requirement   PhotoRequirement   @relation(fields: [requirementId], references: [id], onDelete: Cascade)
+  // Multiple photos allowed per requirement
 }

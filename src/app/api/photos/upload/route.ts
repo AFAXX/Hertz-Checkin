@@ -1,8 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { uploadToSharePoint, isGraphConfigured } from '@/lib/graph-api'
+import { uploadToSharePoint } from '@/lib/graph-api'
+import { writeFile, mkdir } from 'fs/promises'
+import { join } from 'path'
+import { existsSync } from 'fs'
+import { randomUUID } from 'crypto'
 
-export const runtime = 'nodejs'
+// Allow up to 30 seconds for upload (photo + Graph API)
+export const maxDuration = 30
+
+const UPLOAD_DIR = process.env.LOCAL_UPLOAD_DIR || './uploads'
 
 export async function POST(request: NextRequest) {
   try {
@@ -11,89 +18,103 @@ export async function POST(request: NextRequest) {
     const token = formData.get('token') as string | null
     const requirementId = formData.get('requirementId') as string | null
 
+    // Validate inputs
     if (!file) {
-      return NextResponse.json({ error: 'Nessuna foto ricevuta' }, { status: 400 })
-    }
-    if (!token || !requirementId) {
-      return NextResponse.json({ error: 'Dati mancanti (token o requisito foto)' }, { status: 400 })
-    }
-    if (!file.type.startsWith('image/')) {
-      return NextResponse.json({ error: 'Il file deve essere un\'immagine' }, { status: 400 })
+      return NextResponse.json({ error: 'Nessuna foto selezionata' }, { status: 400 })
     }
 
-    // Validate token (same checks as /api/token/validate and /api/submit)
+    if (!token) {
+      return NextResponse.json({ error: 'Token mancante' }, { status: 400 })
+    }
+
+    if (!requirementId) {
+      return NextResponse.json({ error: 'Requirement ID mancante' }, { status: 400 })
+    }
+
+    // Validate file type
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif']
+    if (!allowedTypes.includes(file.type) && !file.name.match(/\.(jpg|jpeg|png|webp|heic|heif)$/i)) {
+      return NextResponse.json(
+        { error: 'Formato non supportato. Usa JPG, PNG o WebP.' },
+        { status: 400 }
+      )
+    }
+
+    // Validate file size (max 20MB)
+    const MAX_SIZE = 20 * 1024 * 1024
+    if (file.size > MAX_SIZE) {
+      return NextResponse.json(
+        { error: 'Foto troppo grande. Dimensione massima: 20MB.' },
+        { status: 400 }
+      )
+    }
+
+    // Validate token and get contract info
     const accessToken = await db.accessToken.findUnique({
       where: { token },
       include: { contract: true },
     })
 
     if (!accessToken) {
-      return NextResponse.json({ error: 'Token non trovato' }, { status: 404 })
+      return NextResponse.json({ error: 'Token non valido' }, { status: 404 })
     }
+
     if (accessToken.usedAt) {
       return NextResponse.json({ error: 'Token già utilizzato' }, { status: 410 })
     }
+
     if (new Date() > accessToken.expiresAt) {
-      return NextResponse.json({ error: 'Token scaduto' }, { status: 410 })
+      return NextResponse.json({ error: 'Token scaduto. Contattare il personale Hertz.' }, { status: 410 })
     }
 
+    // Validate requirement exists
     const requirement = await db.photoRequirement.findUnique({
       where: { id: requirementId },
     })
+
     if (!requirement) {
-      return NextResponse.json({ error: 'Requisito foto non valido' }, { status: 400 })
+      return NextResponse.json({ error: 'Requisito foto non trovato' }, { status: 404 })
     }
 
-    const buffer = Buffer.from(await file.arrayBuffer())
-    const ext = file.name.split('.').pop() || 'jpg'
-    const fileName = `${requirement.key}_${Date.now()}.${ext}`
+    // Multiple photos allowed per requirement — just insert a new submission
 
-    // Try SharePoint first; if Graph API isn't configured (or the call fails),
-    // we still record the submission so the checklist can progress —
-    // uploadToSharePoint() already returns null in both of those cases.
+    // Read file buffer
+    const buffer = Buffer.from(await file.arrayBuffer())
+
+    // Generate a unique file name
+    const ext = file.name.split('.').pop() || 'jpg'
+    const uniqueFileName = `${requirement.key}_${Date.now()}_${randomUUID().slice(0, 8)}.${ext}`
+
+    // Try Microsoft Graph API upload first (SharePoint/OneDrive)
+    const graphResult = await uploadToSharePoint(
+      uniqueFileName,
+      buffer,
+      accessToken.contract.contractNumber
+    )
+
+    let localPath: string | null = null
     let graphItemId: string | null = null
     let graphDriveId: string | null = null
 
-    if (await isGraphConfigured()) {
-      const uploadResult = await uploadToSharePoint(
-        fileName,
-        buffer,
-        accessToken.contract.contractNumber
+    if (graphResult) {
+      // Successfully uploaded to SharePoint
+      graphItemId = graphResult.graphItemId
+      graphDriveId = graphResult.graphDriveId
+      console.log(
+        `[PhotoUpload] Uploaded to SharePoint: ${graphResult.webUrl}`
       )
-      if (uploadResult) {
-        graphItemId = uploadResult.graphItemId
-        graphDriveId = uploadResult.graphDriveId
+    } else {
+      // Fallback to local storage
+      console.log('[PhotoUpload] Graph API not available, using local storage')
+      const contractDir = join(UPLOAD_DIR, accessToken.contract.contractNumber)
+      if (!existsSync(contractDir)) {
+        await mkdir(contractDir, { recursive: true })
       }
+      localPath = join(contractDir, uniqueFileName)
+      await writeFile(localPath, buffer)
     }
 
-    // One photo per requirement per contract — upsert so retakes overwrite
-    // the previous submission instead of failing on the unique constraint.
-    const submission = await db.photoSubmission.upsert({
-      where: {
-        contractId_requirementId: {
-          contractId: accessToken.contractId,
-          requirementId: requirement.id,
-        },
-      },
-      update: {
-        fileName,
-        fileSize: file.size,
-        mimeType: file.type,
-        graphItemId,
-        graphDriveId,
-        uploadedAt: new Date(),
-      },
-      create: {
-        contractId: accessToken.contractId,
-        requirementId: requirement.id,
-        fileName,
-        fileSize: file.size,
-        mimeType: file.type,
-        graphItemId,
-        graphDriveId,
-      },
-    })
-
+    // Update contract status to in_progress if it was pending
     if (accessToken.contract.status === 'pending') {
       await db.rentalContract.update({
         where: { id: accessToken.contractId },
@@ -101,19 +122,33 @@ export async function POST(request: NextRequest) {
       })
     }
 
+    // Save submission to database
+    const submission = await db.photoSubmission.create({
+      data: {
+        contractId: accessToken.contractId,
+        requirementId: requirementId,
+        fileName: uniqueFileName,
+        fileSize: file.size,
+        mimeType: file.type,
+        localPath,
+        graphItemId,
+        graphDriveId,
+      },
+    })
+
     return NextResponse.json({
       success: true,
-      photo: {
+      submission: {
         id: submission.id,
         fileName: submission.fileName,
-        savedToSharePoint: !!graphItemId,
+        storedIn: graphResult ? 'sharepoint' : 'local',
       },
     })
   } catch (error) {
     console.error('Photo upload error:', error)
     const msg = error instanceof Error ? error.message : 'Unknown error'
     return NextResponse.json(
-      { error: `Caricamento foto fallito: ${msg}` },
+      { error: `Errore durante il caricamento: ${msg}` },
       { status: 500 }
     )
   }

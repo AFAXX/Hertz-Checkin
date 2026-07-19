@@ -36,7 +36,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Token scaduto' }, { status: 410 })
     }
 
-    // Check all required photos are submitted
+    // Check all required photos have at least 1 submission
     const requirements = await db.photoRequirement.findMany({
       where: { required: true },
     })

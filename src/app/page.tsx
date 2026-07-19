@@ -72,7 +72,7 @@ import { t, LOCALES, type Locale } from '@/lib/i18n'
 
 interface PhotoChecklistItem {
   id: string; key: string; label: string; labelEn: string | null
-  description: string | null; icon: string; required: boolean; completed: boolean
+  description: string | null; icon: string; required: boolean; completed: boolean; photoCount: number
 }
 
 interface ContractInfo {
@@ -103,7 +103,7 @@ interface AdminContract {
 }
 
 const iconMap: Record<string, React.ElementType> = {
-  CarFront, Car, ArrowLeft, ArrowRight, Gauge, Fuel, AlertTriangle,
+  CarFront, Car, ArrowLeft, ArrowRight,
 }
 
 type View = 'dashboard' | 'photo_checklist' | 'confirmation'
@@ -232,11 +232,13 @@ export default function Home() {
           return
         }
         if (!res.ok) { setError(String(data.error || `Upload failed (${res.status})`)); return }
-        const storedIn = (data.submission as Record<string, string>)?.storedIn
-        setChecklist(prev => prev.map(item => item.key === requirement.key ? { ...item, completed: true } : item))
-        setSuccessMsg(storedIn === 'sharepoint'
-          ? t(locale, 'checklist.photoSuccess')
-          : `${t(locale, 'checklist.photoSuccess')} (local)`)
+        // Increment photo count for this requirement
+        setChecklist(prev => prev.map(item =>
+          item.key === requirement.key
+            ? { ...item, completed: true, photoCount: item.photoCount + 1 }
+            : item
+        ))
+        setSuccessMsg(`${requirement.label} — photo added`)
       } catch (err) {
         console.error('Photo upload error:', err)
         setError(t(locale, 'landing.connectionError'))
@@ -350,11 +352,18 @@ export default function Home() {
 
   // ==================== PHOTO CHECKLIST (Customer View) ====================
   if (view === 'photo_checklist' && contractInfo) {
+    // Zone config for the 2D car diagram
+    const zoneStatus: Record<string, { completed: boolean; count: number }> = {}
+    for (const item of checklist) {
+      zoneStatus[item.key] = { completed: item.completed, count: item.photoCount }
+    }
+
     return (
       <div className="min-h-screen flex flex-col bg-gray-50">
+        {/* Header — customer only, no admin links */}
         <header className="w-full bg-[#FFD100] shadow-md sticky top-0 z-10">
-          <div className="max-w-3xl mx-auto px-4 sm:px-6 py-3">
-            <div className="flex items-center justify-between mb-2">
+          <div className="max-w-lg mx-auto px-4 sm:px-6 py-3">
+            <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <div className="w-8 h-8 bg-black rounded-lg flex items-center justify-center">
                   <CarFront className="w-5 h-5 text-[#FFD100]" />
@@ -362,7 +371,7 @@ export default function Home() {
                 <span className="font-bold text-black text-sm">Hertz Malta</span>
               </div>
               <Select value={locale} onValueChange={v => changeLocale(v as Locale)}>
-                <SelectTrigger className="w-[110px] h-7 text-xs border-black/20 text-black/70 bg-white/80">
+                <SelectTrigger className="w-[100px] h-7 text-xs border-black/20 text-black/70 bg-white/80">
                   <Globe className="w-3 h-3 mr-1" /><SelectValue />
                 </SelectTrigger>
                 <SelectContent className="max-h-48">
@@ -370,59 +379,161 @@ export default function Home() {
                 </SelectContent>
               </Select>
             </div>
-            <div className="flex justify-between text-xs text-black/70 mb-1">
-              <span>{completedCount}/{totalCount} {t(locale, 'checklist.photosCompleted')}</span>
+            <div className="flex justify-between text-xs text-black/70 mt-2 mb-1">
+              <span>{completedCount}/{totalCount} zones covered</span>
               <span>{Math.round(progressPercent)}%</span>
             </div>
-            <Progress value={progressPercent} className="h-2 bg-black/10 [&>div]:bg-black" />
+            <Progress value={progressPercent} className="h-1.5 bg-black/10 [&>div]:bg-black" />
           </div>
         </header>
-        <main className="flex-1 max-w-3xl mx-auto w-full p-4 sm:p-6 space-y-3 pb-24">
+
+        <main className="flex-1 max-w-lg mx-auto w-full p-4 space-y-4 pb-28">
+          {/* Contract info */}
           <Card className="border-0 shadow-sm">
-            <CardContent className="p-4">
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
-                <div><span className="text-muted-foreground text-xs">{t(locale, 'checklist.customer')}</span><p className="font-semibold">{contractInfo.customerName}</p></div>
-                <div><span className="text-muted-foreground text-xs">{t(locale, 'checklist.vehicle')}</span><p className="font-semibold">{contractInfo.vehicleModel}</p></div>
-                <div><span className="text-muted-foreground text-xs">{t(locale, 'checklist.plate')}</span><p className="font-semibold font-mono">{contractInfo.vehiclePlate}</p></div>
-                {contractInfo.vehicleColor && <div><span className="text-muted-foreground text-xs">{t(locale, 'checklist.color')}</span><p className="font-semibold">{contractInfo.vehicleColor}</p></div>}
+            <CardContent className="p-3">
+              <div className="grid grid-cols-2 gap-2 text-sm">
+                <div><span className="text-muted-foreground text-[10px]">Contract</span><p className="font-mono font-bold text-xs">{contractInfo.contractNumber}</p></div>
+                <div><span className="text-muted-foreground text-[10px]">Customer</span><p className="font-semibold text-xs">{contractInfo.customerName}</p></div>
+                <div><span className="text-muted-foreground text-[10px]">Vehicle</span><p className="font-semibold text-xs">{contractInfo.vehicleModel}</p></div>
+                <div><span className="text-muted-foreground text-[10px]">Plate</span><p className="font-mono font-bold text-xs">{contractInfo.vehiclePlate}</p></div>
               </div>
             </CardContent>
           </Card>
-          {error && <Alert variant="destructive"><XCircle className="w-4 h-4" /><AlertDescription>{error}</AlertDescription></Alert>}
-          {successMsg && <Alert className="border-green-200 bg-green-50 text-green-800"><CheckCircle2 className="w-4 h-4" /><AlertDescription>{successMsg}</AlertDescription></Alert>}
-          <h2 className="font-semibold flex items-center gap-2 text-base"><Camera className="w-4 h-4" />{t(locale, 'checklist.requiredPhotos')}</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+
+          {error && <Alert variant="destructive"><XCircle className="w-4 h-4" /><AlertDescription className="text-xs">{error}</AlertDescription></Alert>}
+          {successMsg && <Alert className="border-green-200 bg-green-50 text-green-800"><CheckCircle2 className="w-4 h-4" /><AlertDescription className="text-xs">{successMsg}</AlertDescription></Alert>}
+
+          {/* 2D Car Diagram */}
+          <div className="flex justify-center">
+            <svg viewBox="0 0 240 440" className="w-56 sm:w-64" xmlns="http://www.w3.org/2000/svg">
+              {/* Shadow */}
+              <ellipse cx="120" cy="225" rx="88" ry="190" fill="rgba(0,0,0,0.04)"/>
+              {/* Car body */}
+              <path d="M 80 38 Q 120 18 160 38 L 176 62 L 204 118 L 208 220 L 204 340 L 176 392 L 160 415 Q 120 435 80 415 L 64 392 L 36 340 L 32 220 L 36 118 L 64 62 Z"
+                fill="#f0f0f0" stroke="#666" strokeWidth="2.5" strokeLinejoin="round"/>
+              {/* Windshield */}
+              <path d="M 85 66 L 155 66 L 170 96 L 70 96 Z" fill="#a8d4f0" stroke="#888" strokeWidth="0.8" opacity="0.7"/>
+              {/* Rear window */}
+              <path d="M 70 356 L 170 356 L 155 388 L 85 388 Z" fill="#a8d4f0" stroke="#888" strokeWidth="0.8" opacity="0.7"/>
+              {/* Headlights */}
+              <ellipse cx="82" cy="38" rx="10" ry="5" fill="#FFD100" stroke="#CCA800" strokeWidth="0.5"/>
+              <ellipse cx="158" cy="38" rx="10" ry="5" fill="#FFD100" stroke="#CCA800" strokeWidth="0.5"/>
+              {/* Tail lights */}
+              <ellipse cx="82" cy="412" rx="9" ry="4" fill="#e53e3e" stroke="#c53030" strokeWidth="0.5"/>
+              <ellipse cx="158" cy="412" rx="9" ry="4" fill="#e53e3e" stroke="#c53030" strokeWidth="0.5"/>
+              {/* Wheels */}
+              <rect x="20" y="128" width="20" height="42" rx="6" fill="#444" stroke="#333" strokeWidth="1"/>
+              <rect x="200" y="128" width="20" height="42" rx="6" fill="#444" stroke="#333" strokeWidth="1"/>
+              <rect x="20" y="270" width="20" height="42" rx="6" fill="#444" stroke="#333" strokeWidth="1"/>
+              <rect x="200" y="270" width="20" height="42" rx="6" fill="#444" stroke="#333" strokeWidth="1"/>
+
+              {/* === CLICKABLE ZONES === */}
+
+              {/* FRONT zone */}
+              <path
+                d="M 80 38 Q 120 18 160 38 L 176 62 L 64 62 Z"
+                fill={zoneStatus.front?.completed ? '#22c55e' : '#FFD100'}
+                opacity="0.35"
+                className="cursor-pointer transition-opacity hover:opacity-60"
+                onClick={() => { const r = checklist.find(c => c.key === 'front'); if (r) handlePhotoCapture(r) }}
+              />
+              {/* Front label */}
+              <text x="120" y="50" textAnchor="middle" className="text-[9px] font-bold fill-gray-700 pointer-events-none select-none">FRONT</text>
+              {zoneStatus.front?.completed && <text x="120" y="60" textAnchor="middle" className="text-[8px] fill-green-700 font-semibold pointer-events-none select-none">{zoneStatus.front.count} photo{zoneStatus.front.count > 1 ? 's' : ''}</text>}
+
+              {/* BACK zone */}
+              <path
+                d="M 64 392 L 176 392 L 160 415 Q 120 435 80 415 Z"
+                fill={zoneStatus.back?.completed ? '#22c55e' : '#FFD100'}
+                opacity="0.35"
+                className="cursor-pointer transition-opacity hover:opacity-60"
+                onClick={() => { const r = checklist.find(c => c.key === 'back'); if (r) handlePhotoCapture(r) }}
+              />
+              <text x="120" y="408" textAnchor="middle" className="text-[9px] font-bold fill-gray-700 pointer-events-none select-none">BACK</text>
+              {zoneStatus.back?.completed && <text x="120" y="420" textAnchor="middle" className="text-[8px] fill-green-700 font-semibold pointer-events-none select-none">{zoneStatus.back.count} photo{zoneStatus.back.count > 1 ? 's' : ''}</text>}
+
+              {/* PASSENGER SIDE zone (right) */}
+              <path
+                d="M 176 62 L 204 118 L 208 220 L 204 340 L 176 392 L 170 356 L 170 96 Z"
+                fill={zoneStatus.passenger_side?.completed ? '#22c55e' : '#3b82f6'}
+                opacity="0.2"
+                className="cursor-pointer transition-opacity hover:opacity-45"
+                onClick={() => { const r = checklist.find(c => c.key === 'passenger_side'); if (r) handlePhotoCapture(r) }}
+              />
+              <text x="192" y="225" textAnchor="middle" className="text-[7px] font-bold fill-gray-600 pointer-events-none select-none" transform="rotate(90 192 225)">PASSENGER</text>
+              {zoneStatus.passenger_side?.completed && <text x="192" y="240" textAnchor="middle" className="text-[7px] fill-green-700 font-semibold pointer-events-none select-none" transform="rotate(90 192 240)">{zoneStatus.passenger_side.count} photo{zoneStatus.passenger_side.count > 1 ? 's' : ''}</text>}
+
+              {/* DRIVER SIDE zone (left) */}
+              <path
+                d="M 64 62 L 36 118 L 32 220 L 36 340 L 64 392 L 70 356 L 70 96 Z"
+                fill={zoneStatus.driver_side?.completed ? '#22c55e' : '#3b82f6'}
+                opacity="0.2"
+                className="cursor-pointer transition-opacity hover:opacity-45"
+                onClick={() => { const r = checklist.find(c => c.key === 'driver_side'); if (r) handlePhotoCapture(r) }}
+              />
+              <text x="48" y="225" textAnchor="middle" className="text-[7px] font-bold fill-gray-600 pointer-events-none select-none" transform="rotate(-90 48 225)">DRIVER</text>
+              {zoneStatus.driver_side?.completed && <text x="48" y="240" textAnchor="middle" className="text-[7px] fill-green-700 font-semibold pointer-events-none select-none" transform="rotate(-90 48 240)">{zoneStatus.driver_side.count} photo{zoneStatus.driver_side.count > 1 ? 's' : ''}</text>}
+
+              {/* Zone status indicators */}
+              {zoneStatus.front?.completed && <circle cx="120" cy="22" r="5" fill="#22c55e" stroke="white" strokeWidth="1.5"/>}
+              {zoneStatus.back?.completed && <circle cx="120" cy="428" r="5" fill="#22c55e" stroke="white" strokeWidth="1.5"/>}
+              {zoneStatus.passenger_side?.completed && <circle cx="214" cy="220" r="5" fill="#22c55e" stroke="white" strokeWidth="1.5"/>}
+              {zoneStatus.driver_side?.completed && <circle cx="26" cy="220" r="5" fill="#22c55e" stroke="white" strokeWidth="1.5"/>}
+            </svg>
+          </div>
+
+          {/* Photo zone cards — 2x2 grid */}
+          <div className="grid grid-cols-2 gap-3">
             {checklist.map(item => {
               const IconComp = iconMap[item.icon] || Camera
               const isUploading = uploadingKey === item.key
+              const zoneColor = (item.key === 'front' || item.key === 'back') ? 'bg-[#FFD100]/15' : 'bg-blue-50'
               return (
-                <Card key={item.id} className={`border-0 shadow-sm ${item.completed ? 'bg-green-50 ring-1 ring-green-200' : 'bg-white ring-1 ring-black/5'}`}>
-                  <CardContent className="p-3">
-                    <div className="flex items-center gap-3">
-                      <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${item.completed ? 'bg-green-200 text-green-700' : 'bg-[#FFD100]/20 text-black'}`}>
-                        {item.completed ? <CheckCircle2 className="w-5 h-5" /> : <IconComp className="w-5 h-5" />}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-1">
-                          <span className="font-semibold text-sm">{t(locale, `photo.${item.key}` as never)}</span>
-                          {item.required && !item.completed && <Badge className="text-[9px] px-1 py-0 bg-amber-100 text-amber-800">{t(locale, 'checklist.mandatory')}</Badge>}
+                <Card key={item.id} className={`border-0 shadow-sm ${item.completed ? 'bg-green-50 ring-2 ring-green-300' : `${zoneColor} ring-1 ring-black/5`}`}>
+                  <CardContent className="p-3 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${item.completed ? 'bg-green-200 text-green-700' : 'bg-white text-black'}`}>
+                          {item.completed ? <CheckCircle2 className="w-4 h-4" /> : <IconComp className="w-4 h-4" />}
                         </div>
-                        <p className="text-[11px] text-muted-foreground">{t(locale, `photo.${item.key}.desc` as never)}</p>
+                        <div>
+                          <span className="font-bold text-xs">{item.label}</span>
+                          {item.photoCount > 0 && (
+                            <Badge variant="outline" className="ml-1 text-[9px] px-1 py-0 text-green-700 border-green-300 bg-green-50">{item.photoCount}</Badge>
+                          )}
+                        </div>
                       </div>
-                      <Button size="sm" variant={item.completed ? 'outline' : 'default'} className={`shrink-0 h-8 text-xs ${item.completed ? 'border-green-300 text-green-700' : 'bg-[#FFD100] hover:bg-[#E6BC00] text-black'}`} onClick={() => handlePhotoCapture(item)} disabled={isUploading}>
-                        {isUploading ? <Loader2 className="w-3 h-3 animate-spin" /> : item.completed ? <RefreshCw className="w-3 h-3" /> : <Camera className="w-3 h-3" />}
-                      </Button>
                     </div>
+                    <Button
+                      size="sm"
+                      variant={item.completed ? 'outline' : 'default'}
+                      className={`w-full h-9 text-xs ${item.completed ? 'border-green-300 text-green-700 hover:bg-green-100' : 'bg-black hover:bg-black/90 text-[#FFD100]'}`}
+                      onClick={() => handlePhotoCapture(item)}
+                      disabled={isUploading}
+                    >
+                      {isUploading ? <><Loader2 className="w-3 h-3 mr-1 animate-spin" />Uploading...</> : item.completed ? <><Plus className="w-3 h-3 mr-1" />Add another photo</> : <><Camera className="w-3 h-3 mr-1" />Take photo</>}
+                    </Button>
                   </CardContent>
                 </Card>
               )
             })}
           </div>
         </main>
-        <div className="fixed bottom-0 left-0 right-0 p-4 bg-white/80 backdrop-blur-sm border-t z-10">
-          <div className="max-w-3xl mx-auto">
-            <Button className="w-full h-12 text-base font-bold shadow-xl rounded-xl bg-black hover:bg-black/90 text-[#FFD100] disabled:opacity-50" disabled={!allRequiredCompleted || submitting} onClick={handleSubmit}>
-              {submitting ? <><Loader2 className="w-5 h-5 mr-2 animate-spin" />{t(locale, 'checklist.submitting')}</> : !allRequiredCompleted ? <><ImageIcon className="w-5 h-5 mr-2" />{completedCount}/{totalCount}</> : <><Upload className="w-5 h-5 mr-2" />{t(locale, 'checklist.submitCheckin')}</>}
+
+        {/* Submit bar */}
+        <div className="fixed bottom-0 left-0 right-0 p-3 bg-white/90 backdrop-blur-sm border-t z-10">
+          <div className="max-w-lg mx-auto">
+            <Button
+              className="w-full h-12 text-base font-bold shadow-xl rounded-xl bg-black hover:bg-black/90 text-[#FFD100] disabled:opacity-40"
+              disabled={!allRequiredCompleted || submitting}
+              onClick={handleSubmit}
+            >
+              {submitting
+                ? <><Loader2 className="w-5 h-5 mr-2 animate-spin" />Submitting...</>
+                : !allRequiredCompleted
+                  ? <><Camera className="w-5 h-5 mr-2" />{completedCount}/{totalCount} zones covered</>
+                  : <><Upload className="w-5 h-5 mr-2" />Submit Check-in</>
+              }
             </Button>
           </div>
         </div>
@@ -430,16 +541,16 @@ export default function Home() {
     )
   }
 
-  // ==================== CONFIRMATION (Customer View) ====================
+  // ==================== CONFIRMATION (Customer View — Token Expired) ====================
   if (view === 'confirmation' && contractInfo) {
     return (
       <div className="min-h-screen flex flex-col bg-gray-50">
         <header className="w-full bg-green-600 text-white shadow-md">
-          <div className="max-w-3xl mx-auto px-4 sm:px-6 py-4 flex items-center gap-3">
+          <div className="max-w-lg mx-auto px-4 sm:px-6 py-4 flex items-center gap-3">
             <CheckCheck className="w-8 h-8" />
             <div>
-              <h1 className="text-lg font-bold">{t(locale, 'confirm.title')}</h1>
-              <p className="text-green-100 text-xs">{t(locale, 'confirm.subtitle')}</p>
+              <h1 className="text-lg font-bold">Check-in Complete</h1>
+              <p className="text-green-100 text-xs">Vehicle photo inspection submitted successfully</p>
             </div>
           </div>
         </header>
@@ -449,18 +560,26 @@ export default function Home() {
               <div className="w-20 h-20 mx-auto bg-green-100 rounded-full flex items-center justify-center">
                 <CheckCircle2 className="w-12 h-12 text-green-600" />
               </div>
-              <h2 className="text-xl font-bold text-green-800">{t(locale, 'confirm.thanks')}</h2>
-              <p className="text-sm text-muted-foreground">{t(locale, 'confirm.message')}</p>
-              <div className="bg-green-50 rounded-lg p-3 text-left text-sm space-y-1">
-                <div className="flex justify-between"><span className="text-muted-foreground text-xs">{t(locale, 'confirm.contract')}</span><span className="font-mono font-semibold">{contractInfo.contractNumber}</span></div>
-                <div className="flex justify-between"><span className="text-muted-foreground text-xs">{t(locale, 'checklist.customer')}</span><span className="font-semibold">{contractInfo.customerName}</span></div>
-                <div className="flex justify-between"><span className="text-muted-foreground text-xs">{t(locale, 'checklist.plate')}</span><span className="font-mono font-semibold">{contractInfo.vehiclePlate}</span></div>
+              <h2 className="text-xl font-bold text-green-800">Thank you, {contractInfo.customerName}!</h2>
+              <p className="text-sm text-muted-foreground">Your vehicle photo check-in has been submitted successfully. The Hertz staff has been notified and will review the photos.</p>
+              <div className="bg-gray-50 rounded-lg p-3 text-left text-sm space-y-1.5 border">
+                <div className="flex justify-between"><span className="text-muted-foreground text-xs">Contract</span><span className="font-mono font-semibold text-xs">{contractInfo.contractNumber}</span></div>
+                <div className="flex justify-between"><span className="text-muted-foreground text-xs">Vehicle</span><span className="font-semibold text-xs">{contractInfo.vehicleModel}</span></div>
+                <div className="flex justify-between"><span className="text-muted-foreground text-xs">Plate</span><span className="font-mono font-bold text-xs">{contractInfo.vehiclePlate}</span></div>
               </div>
-              <div className="bg-amber-50 border border-amber-200 rounded-lg p-2 text-[11px] text-amber-800">{t(locale, 'confirm.savedSecure')}</div>
-              <Button variant="outline" onClick={() => { setView('dashboard'); setToken(''); setContractInfo(null); setChecklist([]); setError(null); window.location.hash = '' }}>{t(locale, 'confirm.backHome')}</Button>
+              <div className="bg-red-50 border border-red-200 rounded-lg p-3 space-y-1">
+                <div className="flex items-center justify-center gap-2">
+                  <Clock className="w-4 h-4 text-red-500" />
+                  <span className="font-semibold text-sm text-red-700">Link Expired</span>
+                </div>
+                <p className="text-[11px] text-red-600">This token has been used and can no longer be accessed. Please contact Hertz staff if you need assistance.</p>
+              </div>
             </CardContent>
           </Card>
         </main>
+        <footer className="py-3 text-center text-[10px] text-muted-foreground">
+          Hertz Malta &copy; {new Date().getFullYear()}
+        </footer>
       </div>
     )
   }
