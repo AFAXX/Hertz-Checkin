@@ -12,7 +12,6 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Validate token
     const accessToken = await db.accessToken.findUnique({
       where: { token },
       include: {
@@ -29,56 +28,33 @@ export async function POST(request: NextRequest) {
     }
 
     if (accessToken.usedAt) {
-      return NextResponse.json({ error: 'Token già utilizzato' }, { status: 410 })
+      return NextResponse.json({ error: 'Token gia utilizzato' }, { status: 410 })
     }
 
     if (new Date() > accessToken.expiresAt) {
       return NextResponse.json({ error: 'Token scaduto' }, { status: 410 })
     }
 
-    // Check all required photos are submitted
-    const requirements = await db.photoRequirement.findMany({
-      where: { required: true },
-    })
-
-    const submittedRequirementIds = new Set(
-      accessToken.contract.photos.map((p) => p.requirementId)
-    )
-
-    const missingPhotos = requirements.filter(
-      (r) => !submittedRequirementIds.has(r.id)
-    )
-
-    if (missingPhotos.length > 0) {
+    if (accessToken.contract.photos.length === 0) {
       return NextResponse.json(
-        {
-          error: 'Foto mancanti',
-          missingPhotos: missingPhotos.map((r) => ({
-            key: r.key,
-            label: r.label,
-          })),
-        },
+        { error: 'Almeno una foto e richiesta prima di inviare il report.' },
         { status: 400 }
       )
     }
 
-    // Mark contract as completed
     await db.rentalContract.update({
       where: { id: accessToken.contractId },
       data: { status: 'completed' },
     })
 
-    // Mark token as used
     await db.accessToken.update({
       where: { id: accessToken.id },
       data: { usedAt: new Date() },
     })
 
-    // TODO: Send notification email to staff
-    // This would use Microsoft Graph API to send an email or trigger a Power Automate flow
     console.log(
       `[CheckIn] Completed for contract ${accessToken.contract.contractNumber}. ` +
-      `Notification should be sent to staff.`
+      `Photos submitted: ${accessToken.contract.photos.length}.`
     )
 
     return NextResponse.json({
