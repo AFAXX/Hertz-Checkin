@@ -3,6 +3,9 @@ import { db } from '@/lib/db'
 import { v4 as uuidv4 } from 'uuid'
 import * as XLSX from 'xlsx'
 
+// Increase body size limit for file uploads on Vercel
+export const maxDuration = 30
+
 interface RowData {
   contractNumber: string
   customerName: string
@@ -265,7 +268,14 @@ export async function POST(request: NextRequest) {
     })
   } catch (error) {
     console.error('Bulk upload error:', error)
+    // Detect common xlsx/parsing issues
     const msg = error instanceof Error ? error.message : 'Unknown error'
+    if (msg.includes('Unsupported file') || msg.includes('Cannot read')) {
+      return NextResponse.json(
+        { error: `Unsupported file format. Please use .xlsx, .xls, or .csv files. Details: ${msg}` },
+        { status: 400 }
+      )
+    }
     return NextResponse.json(
       { error: `Failed to process file: ${msg}` },
       { status: 500 }

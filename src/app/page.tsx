@@ -146,6 +146,9 @@ export default function Home() {
       const urlToken = hash.replace('#token=', '')
       setToken(urlToken)
       doValidateToken(urlToken, saved || 'en')
+    } else {
+      // No token in URL → load admin dashboard data
+      loadAdminContracts()
     }
   }, [])
 
@@ -174,12 +177,25 @@ export default function Home() {
   const loadAdminContracts = useCallback(async () => {
     setAdminLoading(true)
     try {
-      await fetch('/api/admin/seed', { method: 'POST' })
+      // Seed photo requirements (idempotent)
+      try {
+        await fetch('/api/admin/seed', { method: 'POST' })
+      } catch {
+        // Non-blocking: seed failure shouldn't prevent loading contracts
+      }
       const res = await fetch('/api/admin/contracts')
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        setError(data.error || `Failed to load contracts (HTTP ${res.status})`)
+        return
+      }
       const data = await res.json()
-      if (res.ok) setAdminContracts(data.contracts)
-    } catch { } finally { setAdminLoading(false) }
-  }, [])
+      setAdminContracts(data.contracts || [])
+    } catch (err) {
+      console.error('loadAdminContracts error:', err)
+      setError(t(locale, 'landing.connectionError'))
+    } finally { setAdminLoading(false) }
+  }, [locale])
 
   const doValidateToken = useCallback(async (tk: string, loc?: Locale) => {
     setValidating(true); setError(null)
@@ -208,11 +224,23 @@ export default function Home() {
       formData.append('photo', file); formData.append('token', token); formData.append('requirementId', requirement.id)
       try {
         const res = await fetch('/api/photos/upload', { method: 'POST', body: formData })
-        const data = await res.json()
-        if (!res.ok) { setError(data.error); return }
+        let data: Record<string, unknown>
+        try {
+          data = await res.json()
+        } catch {
+          setError(`Server error (HTTP ${res.status}). Riprova.`)
+          return
+        }
+        if (!res.ok) { setError(String(data.error || `Upload failed (${res.status})`)); return }
+        const storedIn = (data.submission as Record<string, string>)?.storedIn
         setChecklist(prev => prev.map(item => item.key === requirement.key ? { ...item, completed: true } : item))
-        setSuccessMsg(t(locale, 'checklist.photoSuccess'))
-      } catch { setError(t(locale, 'landing.connectionError')) }
+        setSuccessMsg(storedIn === 'sharepoint'
+          ? t(locale, 'checklist.photoSuccess')
+          : `${t(locale, 'checklist.photoSuccess')} (local)`)
+      } catch (err) {
+        console.error('Photo upload error:', err)
+        setError(t(locale, 'landing.connectionError'))
+      }
       finally { setUploadingKey(null) }
     }
     input.click()
@@ -233,18 +261,22 @@ export default function Home() {
   }, [token, locale])
 
   const handleCreateContract = useCallback(async () => {
+    setError(null)
     try {
       const res = await fetch('/api/admin/contracts', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(newContract),
       })
       const data = await res.json()
-      if (!res.ok) { setError(data.error); return }
+      if (!res.ok) { setError(data.error || `Failed to create contract (HTTP ${res.status})`); return }
       setNewTokenLink(data.accessToken?.link || null)
       setNewContract({ contractNumber: '', customerName: '', customerEmail: '', customerPhone: '', vehiclePlate: '', vehicleModel: '', vehicleColor: '' })
       setShowNewContractDialog(false)
       loadAdminContracts()
-    } catch { setError(t(locale, 'landing.connectionError')) }
+    } catch (err) {
+      console.error('Create contract error:', err)
+      setError(t(locale, 'landing.connectionError'))
+    }
   }, [newContract, loadAdminContracts, locale])
 
   const handleGenerateToken = useCallback(async (contractId: string) => {
@@ -266,11 +298,20 @@ export default function Home() {
     const formData = new FormData(); formData.append('file', file)
     try {
       const res = await fetch('/api/admin/bulk-upload', { method: 'POST', body: formData })
-      const data = await res.json()
-      if (!res.ok) { setError(data.error); return }
-      setBulkResult(data)
+      let data: Record<string, unknown>
+      try {
+        data = await res.json()
+      } catch {
+        setError(`Server returned non-JSON response (HTTP ${res.status}). The file may be too large or the server may have an internal error.`)
+        return
+      }
+      if (!res.ok) { setError(String(data.error || `Upload failed (HTTP ${res.status})`)); return }
+      setBulkResult(data as BulkUploadResult)
       loadAdminContracts()
-    } catch { setError(t(locale, 'landing.connectionError')) }
+    } catch (err) {
+      console.error('Bulk upload error:', err)
+      setError(t(locale, 'landing.connectionError'))
+    }
     finally { setBulkUploading(false) }
   }, [loadAdminContracts, locale])
 

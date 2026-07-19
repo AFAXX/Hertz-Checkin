@@ -167,6 +167,6 @@ export async function isGraphConfigured(): Promise<boolean> {
   return !!(
     tenantId && tenantId !== 'your-tenant-id' &&
     clientId && clientId !== 'your-client-id' &&
-    clientSecret && clientId !== 'your-client-secret'
+    clientSecret && clientSecret !== 'your-client-secret'
   )
 }
