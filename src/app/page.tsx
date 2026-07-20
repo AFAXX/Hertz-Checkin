@@ -73,7 +73,10 @@ function LanguageSelector({ locale, setLocale, dark = false }: { locale: Locale;
   const currentLocale = LOCALES.find(l => l.code === locale) || LOCALES[0];
   return (
     <div className="relative">
-      <button onClick={() => setOpen(!open)} className={'flex items-center gap-1.5 text-xs font-medium px-2.5 py-1.5 rounded-lg border transition-colors ' + (dark ? 'border-gray-600 bg-gray-800 text-gray-300 hover:bg-gray-700' : 'border-gray-300 bg-white text-gray-600 hover:bg-gray-50')}>
+      <button
+        onClick={() => setOpen(!open)}
+        className={'flex items-center gap-1.5 text-xs font-medium px-2.5 py-1.5 rounded-lg border transition-colors ' + (dark ? 'border-gray-600 bg-gray-800 text-gray-300 hover:bg-gray-700' : 'border-gray-300 bg-white text-gray-600 hover:bg-gray-50')}
+      >
         <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" /></svg>
         {currentLocale.nativeName}
         <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" /></svg>
@@ -83,8 +86,13 @@ function LanguageSelector({ locale, setLocale, dark = false }: { locale: Locale;
           <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
           <div className="absolute right-0 top-full mt-1 bg-white rounded-xl shadow-xl border border-gray-200 py-1 z-50 min-w-[160px] max-h-[300px] overflow-y-auto">
             {LOCALES.map(l => (
-              <button key={l.code} onClick={() => { setLocale(l.code); setOpen(false); }} className={'w-full text-left px-4 py-2 text-sm hover:bg-gray-50 transition-colors ' + (l.code === locale ? 'font-semibold text-yellow-700 bg-yellow-50' : 'text-gray-700')}>
-                <span className="mr-2">{l.code.toUpperCase()}</span>{l.nativeName}
+              <button
+                key={l.code}
+                onClick={() => { setLocale(l.code); setOpen(false); }}
+                className={'w-full text-left px-4 py-2 text-sm hover:bg-gray-50 transition-colors ' + (l.code === locale ? 'font-semibold text-yellow-700 bg-yellow-50' : 'text-gray-700')}
+              >
+                <span className="mr-2">{l.code.toUpperCase()}</span>
+                {l.nativeName}
               </button>
             ))}
           </div>
@@ -108,12 +116,6 @@ export default function Home() {
   const [tokenDialog, setTokenDialog] = useState<{ contractId: string; contractNumber: string } | null>(null);
   const [generatedToken, setGeneratedToken] = useState<{ token: string; expiresAt: string; link: string } | null>(null);
   const [copied, setCopied] = useState('');
-  
-  // Delete & Selection states
-  const [selectedContracts, setSelectedContracts] = useState<Set<string>>(new Set());
-  const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
-  const [deleteAllConfirm, setDeleteAllConfirm] = useState(false);
-
   const [contract, setContract] = useState<ValidatedContract | null>(null);
   const [checklist, setChecklist] = useState<ChecklistItem[]>([]);
   const [photoCounts, setPhotoCounts] = useState<Record<string, number>>({});
@@ -126,7 +128,9 @@ export default function Home() {
   const objectUrlsRef = useRef<string[]>([]);
 
   useEffect(() => {
-    return () => { objectUrlsRef.current.forEach(url => URL.revokeObjectURL(url)); };
+    return () => {
+      objectUrlsRef.current.forEach(url => URL.revokeObjectURL(url));
+    };
   }, []);
 
   useEffect(() => {
@@ -150,7 +154,7 @@ export default function Home() {
 
   const openCamera = (key: string) => {
     const count = photoCounts[key] || 0;
-    if (count >= MAX_PHOTOS) { setError('Massimo ' + MAX_PHOTOS + ' foto per questo angolo.'); return; }
+    if (count >= MAX_PHOTOS) { setError(t(locale, 'checklist.maxPhotos').replace('{max}', MAX_PHOTOS.toString())); return; }
     const item = checklist.find(c => c.key === key);
     if (!item) return;
     setActiveKey(key); setError('');
@@ -227,7 +231,9 @@ export default function Home() {
 
   const filteredContracts = useCallback(() => {
     let result = contracts;
-    if (statusFilter !== 'all') result = result.filter(c => c.status === statusFilter);
+    if (statusFilter !== 'all') {
+      result = result.filter(c => c.status === statusFilter);
+    }
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase().trim();
       result = result.filter(c =>
@@ -241,49 +247,10 @@ export default function Home() {
     return result;
   }, [contracts, searchQuery, statusFilter]);
 
-  // --- DELETE FUNCTIONALITY ---
-  const handleDeleteContract = async (id: string) => {
-    try {
-      const r = await fetch('/api/admin/contracts?id=' + id, { method: 'DELETE' });
-      if (!r.ok) {
-        const errData = await r.json().catch(() => ({}));
-        throw new Error(errData.error || 'Delete failed');
-      }
-      setDeleteConfirm(null);
-      setSelectedContracts(prev => { const next = new Set(prev); next.delete(id); return next; });
-      loadContracts();
-    } catch (err: unknown) { alert(err instanceof Error ? err.message : 'Failed to delete'); }
-  };
-
-  const handleDeleteSelected = async () => {
-    if (selectedContracts.size === 0) return;
-    const ids = Array.from(selectedContracts);
-    try {
-      for (const id of ids) {
-        const r = await fetch('/api/admin/contracts?id=' + id, { method: 'DELETE' });
-        if (!r.ok) {
-          const errData = await r.json().catch(() => ({}));
-          throw new Error(errData.error || `Delete failed for ${id}`);
-        }
-      }
-      setSelectedContracts(new Set());
-      setDeleteAllConfirm(false);
-      loadContracts();
-    } catch (err: unknown) { alert(err instanceof Error ? err.message : 'Failed to delete'); }
-  };
-
-  const toggleSelectAll = () => {
-    const filtered = filteredContracts();
-    if (selectedContracts.size === filtered.length && filtered.length > 0) setSelectedContracts(new Set());
-    else setSelectedContracts(new Set(filtered.map(c => c.id)));
-  };
-
-  const toggleSelect = (id: string) => {
-    setSelectedContracts(prev => { const next = new Set(prev); if (next.has(id)) next.delete(id); else next.add(id); return next; });
-  };
-
+  /* LOADING */
   if (mode === 'loading') return (<div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: '#1a1a1a' }}><div className="animate-spin h-10 w-10 border-4 border-yellow-400 border-t-transparent rounded-full" /></div>);
 
+  /* COMPLETED */
   if (mode === 'completed') return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-50 to-emerald-100 p-4">
       <div className="bg-white rounded-2xl shadow-xl p-8 max-w-md w-full text-center">
@@ -297,6 +264,7 @@ export default function Home() {
     </div>
   );
 
+  /* CUSTOMER */
   if (mode === 'customer') return (
     <div className="min-h-screen bg-gray-50">
       <input ref={fileInputRef} type="file" accept="image/*" capture="environment" onChange={handleFileChange} className="hidden" />
@@ -331,6 +299,7 @@ export default function Home() {
             const isUploading = uploadingPhoto === item.key;
             const previews = localPreviews[item.key] || [];
             const translatedLabel = t(locale, 'photo.' + item.key) !== 'photo.' + item.key ? t(locale, 'photo.' + item.key) : item.label;
+            const photoCountText = t(locale, 'checklist.photoCount').replace('{count}', count.toString()).replace('{max}', MAX_PHOTOS.toString());
             return (
               <div key={item.id} onClick={() => !full && openCamera(item.key)} className={'bg-white rounded-xl p-3 border-2 cursor-pointer transition-all active:scale-[0.98] ' + (full ? 'border-red-200 bg-red-50/60' : count > 0 ? 'border-green-300 bg-green-50/60' : 'border-gray-200 hover:border-yellow-300')}>
                 <div className="flex items-center justify-between">
@@ -338,7 +307,7 @@ export default function Home() {
                     <div className={'w-9 h-9 rounded-full flex items-center justify-center text-sm ' + (full ? 'bg-red-100' : count > 0 ? 'bg-green-100' : 'bg-gray-100')}>
                       {isUploading ? <div className="animate-spin h-4 w-4 border-2 border-yellow-500 border-t-transparent rounded-full" /> : full ? '🔝' : count > 0 ? '✓' : '📷'}
                     </div>
-                    <div><p className="font-semibold text-gray-800 text-sm">{translatedLabel}</p><p className="text-xs text-gray-500">{count}/{MAX_PHOTOS} foto</p></div>
+                    <div><p className="font-semibold text-gray-800 text-sm">{translatedLabel}</p><p className="text-xs text-gray-500">{photoCountText}</p></div>
                   </div>
                   <div className={'px-2.5 py-1 rounded-full text-xs font-medium ' + (full ? 'bg-red-100 text-red-700' : isUploading ? 'bg-yellow-100 text-yellow-800' : count > 0 ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-500')}>
                     {full ? t(locale, 'checklist.retake') : isUploading ? t(locale, 'checklist.uploading') : count > 0 ? t(locale, 'checklist.retake') : t(locale, 'checklist.takePhoto')}
@@ -355,8 +324,13 @@ export default function Home() {
           })}
         </div>
         {totalPhotos > 0 && (
-          <button onClick={handleSubmit} disabled={isSubmitting} className="w-full py-5 rounded-2xl text-white font-extrabold text-lg tracking-wide transition-all shadow-lg shadow-green-200 hover:shadow-xl active:scale-[0.98]" style={{ backgroundColor: isSubmitting ? '#9ca3af' : '#16a34a' }}>
-            {isSubmitting ? <span className="flex items-center justify-center gap-2"><span className="animate-spin h-5 w-5 border-2 border-white border-t-transparent rounded-full" />{t(locale, 'checklist.submitting')}</span> : <span>{t(locale, 'checklist.submitCheckin')}<span className="block text-sm font-normal opacity-80 mt-0.5">{totalPhotos} foto pronte</span></span>}
+          <button onClick={handleSubmit} disabled={isSubmitting}
+            className="w-full py-5 rounded-2xl text-white font-extrabold text-lg tracking-wide transition-all shadow-lg shadow-green-200 hover:shadow-xl active:scale-[0.98]"
+            style={{ backgroundColor: isSubmitting ? '#9ca3af' : '#16a34a' }}>
+            {isSubmitting
+              ? <span className="flex items-center justify-center gap-2"><span className="animate-spin h-5 w-5 border-2 border-white border-t-transparent rounded-full" />{t(locale, 'checklist.submitting')}</span>
+              : <span>{t(locale, 'checklist.submitCheckin')}<span className="block text-sm font-normal opacity-80 mt-0.5">{totalPhotos} {t(locale, 'checklist.photosReady')}</span></span>
+            }
           </button>
         )}
         {totalPhotos === 0 && <p className="text-center text-xs text-gray-400">{t(locale, 'checklist.completeAll')}</p>}
@@ -398,13 +372,7 @@ export default function Home() {
             <input type="file" accept=".xlsx,.xls,.csv" onChange={handleBulkUpload} className="hidden" disabled={uploading} />
           </label>
           <button onClick={loadContracts} className="text-sm font-medium px-4 py-2 rounded-lg border bg-white" style={{ borderColor: '#ccc', color: '#333' }}>{t(locale, 'admin.refresh')}</button>
-          {selectedContracts.size > 0 && (
-            <button onClick={() => setDeleteAllConfirm(true)} className="text-sm font-medium px-4 py-2 rounded-lg bg-red-600 text-white shadow-sm hover:bg-red-700 ml-auto">
-              {t(locale, 'admin.deleteSelected')} ({selectedContracts.size})
-            </button>
-          )}
         </div>
-
         <div className="flex flex-col sm:flex-row gap-3 mb-6">
           <div className="relative flex-1">
             <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
@@ -434,7 +402,6 @@ export default function Home() {
             <option value="completed">Completed</option>
           </select>
         </div>
-
         {bulkResult && (
           <div className="bg-white rounded-xl p-4 border mb-6" style={{ borderColor: '#e5e5e5' }}>
             <h3 className="font-semibold text-gray-800 mb-2">{t(locale, 'admin.uploadSuccess')}</h3>
@@ -447,7 +414,6 @@ export default function Home() {
             <button onClick={() => setBulkResult(null)} className="mt-2 text-xs text-gray-400">{t(locale, 'admin.close')}</button>
           </div>
         )}
-
         {showCreate && (
           <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-40 p-4" onClick={() => setShowCreate(false)}>
             <form onSubmit={handleCreateContract} onClick={e => e.stopPropagation()} className="bg-white rounded-2xl p-6 shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto">
@@ -460,12 +426,11 @@ export default function Home() {
               </div>
               <div className="flex gap-2 mt-5">
                 <button type="submit" className="flex-1 text-white py-2.5 rounded-lg text-sm font-medium" style={{ backgroundColor: '#1a1a1a' }}>{t(locale, 'admin.createAndGenerate')}</button>
-                <button type="button" onClick={() => setShowCreate(false)} className="px-4 py-2.5 bg-gray-100 text-gray-700 rounded-lg text-sm">{t(locale, 'admin.close')}</button>
+                <button type="button" onClick={() => setShowCreate(false)} className="px-4 py-2.5 bg-gray-100 text-gray-700 rounded-lg text-sm">{t(locale, 'admin.cancel')}</button>
               </div>
             </form>
           </div>
         )}
-
         {(generatedToken || tokenDialog) && (
           <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-40 p-4" onClick={() => { setGeneratedToken(null); setTokenDialog(null); }}>
             <div onClick={e => e.stopPropagation()} className="bg-white rounded-2xl p-6 shadow-xl max-w-md w-full">
@@ -484,13 +449,12 @@ export default function Home() {
             </div>
           </div>
         )}
-
         <div className="bg-white rounded-xl shadow-sm overflow-hidden" style={{ border: '1px solid #e5e5e5' }}>
           <div className="px-6 py-4 border-b" style={{ borderColor: '#e5e5e5', backgroundColor: '#fafaf5' }}>
             <div className="flex items-center justify-between">
               <h2 className="font-semibold text-gray-800">{t(locale, 'admin.contracts')}</h2>
               {(searchQuery || statusFilter !== 'all') && (
-                <span className="text-xs text-gray-500">{filteredContracts().length} di {contracts.length} contratti</span>
+                <span className="text-xs text-gray-500">{filteredContracts().length} {t(locale, 'admin.of')} {contracts.length} {t(locale, 'admin.contractsFound')}</span>
               )}
             </div>
           </div>
@@ -501,18 +465,10 @@ export default function Home() {
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full">
-                <thead><tr style={{ backgroundColor: '#1a1a1a' }}>
-                  <th className="px-4 py-3 w-10">
-                    <input type="checkbox" checked={selectedContracts.size === filteredContracts().length && filteredContracts().length > 0} onChange={toggleSelectAll} className="rounded border-gray-300" />
-                  </th>
-                  {['Contract','Client','Vehicle','Status','Photos','Tokens','Actions'].map(h => <th key={h} className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase">{h}</th>)}
-                </tr></thead>
+                <thead><tr style={{ backgroundColor: '#1a1a1a' }}>{['Contract','Client','Vehicle','Status','Photos','Tokens','Actions'].map(h => <th key={h} className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase">{h}</th>)}</tr></thead>
                 <tbody className="divide-y" style={{ borderColor: '#f0f0f0' }}>
                   {filteredContracts().map(c => (
                     <tr key={c.id} className="hover:bg-gray-50">
-                      <td className="px-4 py-3">
-                        <input type="checkbox" checked={selectedContracts.has(c.id)} onChange={() => toggleSelect(c.id)} className="rounded border-gray-300" />
-                      </td>
                       <td className="px-4 py-3 text-sm font-medium text-gray-800">{c.contractNumber}</td>
                       <td className="px-4 py-3 text-sm text-gray-600"><div>{c.customerName}</div>{c.customerEmail && <div className="text-xs text-gray-400">{c.customerEmail}</div>}</td>
                       <td className="px-4 py-3 text-sm text-gray-600"><div>{c.vehicleModel}</div><div className="text-xs text-gray-400">{c.vehiclePlate}</div></td>
@@ -532,19 +488,7 @@ export default function Home() {
                           {c.tokens.length === 0 && <span className="text-xs text-gray-400">{t(locale, 'admin.noTokens')}</span>}
                         </div>
                       </td>
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-1.5">
-                          <button onClick={() => { setTokenDialog({ contractId: c.id, contractNumber: c.contractNumber }); setGeneratedToken(null); }} className="text-xs font-medium px-2 py-1 rounded" style={{ backgroundColor: '#1a1a1a', color: '#FFCB05' }}>+ Token</button>
-                          {deleteConfirm === c.id ? (
-                            <div className="flex items-center gap-1">
-                              <button onClick={() => handleDeleteContract(c.id)} className="text-xs font-medium px-2 py-1 rounded bg-red-600 text-white hover:bg-red-700">Yes</button>
-                              <button onClick={() => setDeleteConfirm(null)} className="text-xs font-medium px-2 py-1 rounded bg-gray-200 text-gray-700 hover:bg-gray-300">No</button>
-                            </div>
-                          ) : (
-                            <button onClick={() => setDeleteConfirm(c.id)} className="text-xs font-medium px-2 py-1 rounded bg-red-50 text-red-700 hover:bg-red-100 border border-red-200">{t(locale, 'admin.delete')}</button>
-                          )}
-                        </div>
-                      </td>
+                      <td className="px-4 py-3"><button onClick={() => { setTokenDialog({ contractId: c.id, contractNumber: c.contractNumber }); setGeneratedToken(null); }} className="text-xs font-medium px-2 py-1 rounded" style={{ backgroundColor: '#1a1a1a', color: '#FFCB05' }}>+ Token</button></td>
                     </tr>
                   ))}
                 </tbody>
@@ -552,28 +496,6 @@ export default function Home() {
             </div>
           )}
         </div>
-
-        {deleteAllConfirm && (
-          <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4" onClick={() => setDeleteAllConfirm(false)}>
-            <div onClick={e => e.stopPropagation()} className="bg-white rounded-2xl p-6 shadow-xl max-w-md w-full">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center">
-                  <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"/></svg>
-                </div>
-                <div>
-                  <h3 className="font-semibold text-gray-800 text-lg">{t(locale, 'admin.deleteSelected')}</h3>
-                  <p className="text-sm text-gray-500">{selectedContracts.size} contracts</p>
-                </div>
-              </div>
-              <p className="text-sm text-gray-600 mb-6">{t(locale, 'admin.deleteAllConfirm')}</p>
-              <div className="flex gap-3">
-                <button onClick={handleDeleteSelected} className="flex-1 bg-red-600 text-white py-2.5 rounded-lg text-sm font-medium hover:bg-red-700">{t(locale, 'admin.deleteSelected')}</button>
-                <button onClick={() => setDeleteAllConfirm(false)} className="flex-1 bg-gray-100 text-gray-700 py-2.5 rounded-lg text-sm font-medium hover:bg-gray-200">{t(locale, 'admin.close')}</button>
-              </div>
-            </div>
-          </div>
-        )}
-
       </div>
     </div>
   );
