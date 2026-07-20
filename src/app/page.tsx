@@ -9,6 +9,10 @@ interface AdminContract {
   tokens: Array<{ id: string; token: string; expiresAt: string; usedAt: string | null; isExpired: boolean }>;
   photosSubmitted: number; photos: Array<{ key: string; label: string; fileName: string; uploadedAt: string }>;
 }
+interface EditContract {
+  id: string; contractNumber: string; customerName: string; customerEmail: string; customerPhone: string;
+  vehiclePlate: string; vehicleModel: string; vehicleColor: string;
+}
 interface ChecklistItem {
   id: string; key: string; label: string; labelEn: string | null; description: string | null; icon: string | null;
   required: boolean; completed: boolean; photoCount: number;
@@ -62,52 +66,26 @@ function CarDiagram({ onSelect, photoCounts }: { onSelect: (key: string) => void
         <rect x="222" y="195" width="50" height="130" rx="10" fill={done('driver_side') ? 'rgba(34,197,94,0.15)' : 'rgba(148,163,184,0.05)'} stroke={done('driver_side') ? '#22c55e' : '#94a3b8'} strokeWidth="1.5" strokeDasharray={done('driver_side') ? 'none' : '5 3'} />
         {g('driver_side') > 0 && <><circle cx="262" cy="205" r="9" fill="#22c55e" /><text x="262" y="209" textAnchor="middle" fill="white" fontSize="9" fontWeight="bold">{g('driver_side')}</text></>}
       </g>
+      <g onClick={() => onSelect('interior')} style={{ cursor: 'pointer' }}>
+        <rect x="90" y="200" width="120" height="120" rx="10" fill={done('interior') ? 'rgba(34,197,94,0.15)' : 'rgba(148,163,184,0.05)'} stroke={done('interior') ? '#22c55e' : '#94a3b8'} strokeWidth="1.5" strokeDasharray={done('interior') ? 'none' : '5 3'} />
+        {g('interior') > 0 && <><circle cx="200" cy="210" r="9" fill="#22c55e" /><text x="200" y="214" textAnchor="middle" fill="white" fontSize="9" fontWeight="bold">{g('interior')}</text></>}
+      </g>
 
       <text x="150" y="525" textAnchor="middle" fill="#475569" fontSize="11" fontWeight="700" letterSpacing="1">FRONT</text>
       <text x="150" y="22" textAnchor="middle" fill="#475569" fontSize="11" fontWeight="700" letterSpacing="1">BACK</text>
       <text x="14" y="265" textAnchor="middle" fill="#475569" fontSize="9" fontWeight="600" transform="rotate(-90,14,265)" letterSpacing="0.5">PASSENGER</text>
       <text x="286" y="265" textAnchor="middle" fill="#475569" fontSize="9" fontWeight="600" transform="rotate(90,286,265)" letterSpacing="0.5">DRIVER</text>
+      <text x="150" y="270" textAnchor="middle" fill="#475569" fontSize="9" fontWeight="600" letterSpacing="0.5">INTERIOR</text>
     </svg>
-  );
-}
-
-function LanguageSelector({ locale, setLocale, dark = false }: { locale: Locale; setLocale: (l: Locale) => void; dark?: boolean }) {
-  const [open, setOpen] = useState(false);
-  const currentLocale = LOCALES.find(l => l.code === locale) || LOCALES[0];
-  return (
-    <div className="relative">
-      <button
-        onClick={() => setOpen(!open)}
-        className={'flex items-center gap-1.5 text-xs font-medium px-2.5 py-1.5 rounded-lg border transition-colors ' + (dark ? 'border-gray-600 bg-gray-800 text-gray-300 hover:bg-gray-700' : 'border-gray-300 bg-white text-gray-600 hover:bg-gray-50')}
-      >
-        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" /></svg>
-        {currentLocale.nativeName}
-        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" /></svg>
-      </button>
-      {open && (
-        <>
-          <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
-          <div className="absolute right-0 top-full mt-1 bg-white rounded-xl shadow-xl border border-gray-200 py-1 z-50 min-w-[160px] max-h-[300px] overflow-y-auto">
-            {LOCALES.map(l => (
-              <button
-                key={l.code}
-                onClick={() => { setLocale(l.code); setOpen(false); }}
-                className={'w-full text-left px-4 py-2 text-sm hover:bg-gray-50 transition-colors ' + (l.code === locale ? 'font-semibold text-yellow-700 bg-yellow-50' : 'text-gray-700')}
-              >
-                <span className="mr-2">{l.code.toUpperCase()}</span>
-                {l.nativeName}
-              </button>
-            ))}
-          </div>
-        </>
-      )}
-    </div>
   );
 }
 
 export default function Home() {
   const [locale, setLocale] = useState<Locale>('it');
+  const [languageSelected, setLanguageSelected] = useState(false);
   const [mode, setMode] = useState<'loading' | 'admin' | 'customer' | 'completed'>('loading');
+  // Admin page is ALWAYS in English. Customer page uses the selected locale.
+  const displayLocale: Locale = mode === 'admin' ? 'en' : locale;
   const [token, setToken] = useState('');
   const [contracts, setContracts] = useState<AdminContract[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -115,6 +93,10 @@ export default function Home() {
   const [showCreate, setShowCreate] = useState(false);
   const [createForm, setCreateForm] = useState({ contractNumber: '', customerName: '', customerEmail: '', customerPhone: '', vehiclePlate: '', vehicleModel: '', vehicleColor: '' });
   const [uploading, setUploading] = useState(false);
+  const [editContract, setEditContract] = useState<EditContract | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
+  const [selectedContracts, setSelectedContracts] = useState<Set<string>>(new Set());
+  const [deleteAllConfirm, setDeleteAllConfirm] = useState(false);
   const [bulkResult, setBulkResult] = useState<any>(null);
   const [tokenDialog, setTokenDialog] = useState<{ contractId: string; contractNumber: string } | null>(null);
   const [generatedToken, setGeneratedToken] = useState<{ token: string; expiresAt: string; link: string } | null>(null);
@@ -130,17 +112,14 @@ export default function Home() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const objectUrlsRef = useRef<string[]>([]);
 
-  // Cleanup object URLs on unmount to prevent memory leaks
   useEffect(() => {
-    return () => {
-      objectUrlsRef.current.forEach(url => URL.revokeObjectURL(url));
-    };
+    return () => { objectUrlsRef.current.forEach(url => URL.revokeObjectURL(url)); };
   }, []);
 
   useEffect(() => {
     const hash = window.location.hash;
     if (hash.startsWith('#token=')) { const tk = hash.replace('#token=', ''); setToken(tk); setMode('customer'); validateToken(tk); }
-    else { setMode('admin'); loadContracts(); }
+    else { setLocale('en'); setMode('admin'); loadContracts(); }
   }, []);
 
   const validateToken = async (tk: string) => {
@@ -153,12 +132,12 @@ export default function Home() {
       const counts: Record<string, number> = {};
       data.photoChecklist.forEach((item: ChecklistItem) => { counts[item.key] = item.photoCount; });
       setPhotoCounts(counts);
-    } catch { setError(t(locale, 'landing.connectionError')); }
+    } catch { setError(t(displayLocale, 'landing.connectionError')); }
   };
 
   const openCamera = (key: string) => {
     const count = photoCounts[key] || 0;
-    if (count >= MAX_PHOTOS) { setError('Massimo ' + MAX_PHOTOS + ' foto per questo angolo.'); return; }
+    if (count >= MAX_PHOTOS) { setError(t(displayLocale, 'checklist.maxPhotosReached')); return; }
     const item = checklist.find(c => c.key === key);
     if (!item) return;
     setActiveKey(key); setError('');
@@ -194,6 +173,12 @@ export default function Home() {
 
   const totalPhotos = Object.values(photoCounts).reduce((s, c) => s + c, 0);
 
+  const getLabel = (item: ChecklistItem) => {
+    const translated = t(displayLocale, 'photo.' + item.key)
+    if (translated === 'photo.' + item.key) return item.label
+    return translated
+  }
+
   const handleSubmit = async () => {
     if (totalPhotos === 0 || isSubmitting) return;
     setIsSubmitting(true); setError('');
@@ -227,7 +212,71 @@ export default function Home() {
     finally { setUploading(false); if (e.target) e.target.value = ''; }
   };
   const copyToClip = (text: string, id: string) => { navigator.clipboard.writeText(text); setCopied(id); setTimeout(() => setCopied(''), 2000); };
+  const [syncing, setSyncing] = useState(false);
+  const handleSyncCategories = async () => {
+    if (!confirm('This will remove any extra/duplicate photo categories from the database and keep only: Front, Passenger Side, Back, Driver Side, Interior. Continue?')) return;
+    setSyncing(true);
+    try {
+      const r = await fetch('/api/admin/seed', { method: 'POST' });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.error || 'Sync failed');
+      alert('Done: ' + d.message);
+    } catch (err: unknown) { alert(err instanceof Error ? err.message : 'Sync failed'); }
+    finally { setSyncing(false); }
+  };
   const statusBadge = (s: string) => s === 'completed' ? 'bg-green-100 text-green-800' : s === 'in_progress' ? 'bg-yellow-100 text-yellow-800' : 'bg-gray-100 text-gray-600';
+
+  const handleDeleteContract = async (id: string) => {
+    try {
+      const r = await fetch('/api/admin/contracts?id=' + id, { method: 'DELETE' });
+      if (!r.ok) throw new Error('Delete failed');
+      setDeleteConfirm(null);
+      setSelectedContracts(prev => { const next = new Set(prev); next.delete(id); return next; });
+      loadContracts();
+    } catch (err: unknown) { alert(err instanceof Error ? err.message : 'Failed to delete'); }
+  };
+
+  const handleDeleteSelected = async () => {
+    if (selectedContracts.size === 0) return;
+    const ids = Array.from(selectedContracts);
+    try {
+      for (const id of ids) {
+        const r = await fetch('/api/admin/contracts?id=' + id, { method: 'DELETE' });
+        if (!r.ok) throw new Error('Delete failed for ' + id);
+      }
+      setSelectedContracts(new Set());
+      setDeleteAllConfirm(false);
+      loadContracts();
+    } catch (err: unknown) { alert(err instanceof Error ? err.message : 'Failed to delete'); }
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedContracts.size === filteredContracts().length) {
+      setSelectedContracts(new Set());
+    } else {
+      setSelectedContracts(new Set(filteredContracts().map(c => c.id)));
+    }
+  };
+
+  const toggleSelectContract = (id: string) => {
+    setSelectedContracts(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  const handleEditContract = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editContract) return;
+    try {
+      const r = await fetch('/api/admin/contracts', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(editContract) });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.error);
+      setEditContract(null);
+      loadContracts();
+    } catch (err: unknown) { alert(err instanceof Error ? err.message : 'Failed to update'); }
+  };
 
   const filteredContracts = useCallback(() => {
     let result = contracts;
@@ -257,9 +306,32 @@ export default function Home() {
         <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
           <svg className="w-10 h-10 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 13l4 4L19 7" /></svg>
         </div>
-        <h1 className="text-2xl font-bold text-gray-900 mb-2">{t(locale, 'confirm.title')}</h1>
-        <p className="text-gray-600">{t(locale, 'confirm.subtitle')}</p>
+        <h1 className="text-2xl font-bold text-gray-900 mb-2">{t(displayLocale, 'confirm.title')}</h1>
+        <p className="text-gray-600">{t(displayLocale, 'confirm.subtitle')}</p>
         <div className="mt-8 p-4 bg-gray-50 rounded-xl"><p className="text-gray-500 text-xs">Grazie per aver scelto Hertz Malta</p></div>
+      </div>
+    </div>
+  );
+
+  /* CUSTOMER — mandatory language selection */
+  if (mode === 'customer' && !languageSelected) return (
+    <div className="min-h-screen flex items-center justify-center p-4" style={{ backgroundColor: '#1a1a1a' }}>
+      <div className="bg-white rounded-2xl shadow-xl p-6 max-w-md w-full">
+        <div className="text-center mb-6">
+          <h1 className="text-lg font-bold text-gray-900">HERTZ MALTA</h1>
+          <p className="text-sm text-gray-500 mt-1">Choose your language / Scegli la tua lingua</p>
+        </div>
+        <div className="grid grid-cols-2 gap-2">
+          {LOCALES.map(l => (
+            <button
+              key={l.code}
+              onClick={() => { setLocale(l.code); setLanguageSelected(true); }}
+              className="px-3 py-3 rounded-xl border-2 border-gray-200 text-sm font-medium text-gray-800 hover:border-yellow-400 hover:bg-yellow-50 transition-colors active:scale-[0.98]"
+            >
+              {l.nativeName}
+            </button>
+          ))}
+        </div>
       </div>
     </div>
   );
@@ -268,53 +340,45 @@ export default function Home() {
   if (mode === 'customer') return (
     <div className="min-h-screen bg-gray-50">
       <input ref={fileInputRef} type="file" accept="image/*" capture="environment" onChange={handleFileChange} className="hidden" />
-
       <div style={{ backgroundColor: '#1a1a1a' }}>
         <div className="max-w-lg mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
-            <div><h1 className="text-lg font-bold text-white">HERTZ MALTA</h1><p className="text-xs" style={{ color: '#FFCB05' }}>{t(locale, 'app.title')}</p></div>
-            <div className="flex items-center gap-2">
-              <LanguageSelector locale={locale} setLocale={setLocale} dark />
-              {contract && <div className="text-right"><p className="text-xs text-gray-400">{t(locale, 'confirm.contract')}</p><p className="text-sm font-semibold text-white">{contract.contractNumber}</p></div>}
-            </div>
+            <div><h1 className="text-lg font-bold text-white">HERTZ MALTA</h1><p className="text-xs" style={{ color: '#FFCB05' }}>{t(displayLocale, 'app.title')}</p></div>
+            {contract && <div className="text-right"><p className="text-xs text-gray-400">{t(displayLocale, 'confirm.contract')}</p><p className="text-sm font-semibold text-white">{contract.contractNumber}</p></div>}
           </div>
+          <button onClick={() => setLanguageSelected(false)} className="mt-2 text-xs underline" style={{ color: '#FFCB05' }}>{t(displayLocale, 'checklist.changeLanguage')}</button>
           {contract && (
             <div className="mt-3 p-3 rounded-xl grid grid-cols-2 gap-2 text-sm" style={{ backgroundColor: 'rgba(255,203,5,0.1)', border: '1px solid rgba(255,203,5,0.2)' }}>
-              <div><span className="text-xs" style={{ color: '#FFCB05' }}>{t(locale, 'checklist.customer')}</span><p className="font-medium text-white">{contract.customerName}</p></div>
-              <div><span className="text-xs" style={{ color: '#FFCB05' }}>{t(locale, 'checklist.vehicle')}</span><p className="font-medium text-white">{contract.vehicleModel}</p></div>
-              <div><span className="text-xs" style={{ color: '#FFCB05' }}>{t(locale, 'checklist.plate')}</span><p className="font-medium text-white">{contract.vehiclePlate}</p></div>
-              {contract.vehicleColor && <div><span className="text-xs" style={{ color: '#FFCB05' }}>{t(locale, 'checklist.color')}</span><p className="font-medium text-white">{contract.vehicleColor}</p></div>}
+              <div><span className="text-xs" style={{ color: '#FFCB05' }}>{t(displayLocale, 'checklist.customer')}</span><p className="font-medium text-white">{contract.customerName}</p></div>
+              <div><span className="text-xs" style={{ color: '#FFCB05' }}>{t(displayLocale, 'checklist.vehicle')}</span><p className="font-medium text-white">{contract.vehicleModel}</p></div>
+              <div><span className="text-xs" style={{ color: '#FFCB05' }}>{t(displayLocale, 'checklist.plate')}</span><p className="font-medium text-white">{contract.vehiclePlate}</p></div>
+              {contract.vehicleColor && <div><span className="text-xs" style={{ color: '#FFCB05' }}>{t(displayLocale, 'checklist.color')}</span><p className="font-medium text-white">{contract.vehicleColor}</p></div>}
             </div>
           )}
         </div>
       </div>
-
       <div className="max-w-lg mx-auto px-4 py-6 space-y-5">
         {error && <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl text-sm flex items-start gap-2"><span>!</span><span className="flex-1">{error}</span><button onClick={() => setError('')} className="font-bold text-red-400 ml-2">x</button></div>}
-
         <div className="bg-white rounded-2xl shadow-sm p-4 border border-gray-100">
           <CarDiagram onSelect={openCamera} photoCounts={photoCounts} />
         </div>
-
         <div className="space-y-2">
           {checklist.map(item => {
             const count = photoCounts[item.key] || 0;
             const full = count >= MAX_PHOTOS;
             const isUploading = uploadingPhoto === item.key;
             const previews = localPreviews[item.key] || [];
-            // Use translated label if available, fallback to label from DB
-            const translatedLabel = t(locale, 'photo.' + item.key) !== 'photo.' + item.key ? t(locale, 'photo.' + item.key) : item.label;
             return (
               <div key={item.id} onClick={() => !full && openCamera(item.key)} className={'bg-white rounded-xl p-3 border-2 cursor-pointer transition-all active:scale-[0.98] ' + (full ? 'border-red-200 bg-red-50/60' : count > 0 ? 'border-green-300 bg-green-50/60' : 'border-gray-200 hover:border-yellow-300')}>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <div className={'w-9 h-9 rounded-full flex items-center justify-center text-sm ' + (full ? 'bg-red-100' : count > 0 ? 'bg-green-100' : 'bg-gray-100')}>
-                      {isUploading ? <div className="animate-spin h-4 w-4 border-2 border-yellow-500 border-t-transparent rounded-full" /> : full ? '\uD83D\uDD1D' : count > 0 ? '\u2713' : '\uD83D\uDCF7'}
+                      {isUploading ? <div className="animate-spin h-4 w-4 border-2 border-yellow-500 border-t-transparent rounded-full" /> : full ? '🔒' : count > 0 ? '✓' : '📷'}
                     </div>
-                    <div><p className="font-semibold text-gray-800 text-sm">{translatedLabel}</p><p className="text-xs text-gray-500">{count}/{MAX_PHOTOS} foto</p></div>
+                    <div><p className="font-semibold text-gray-800 text-sm">{getLabel(item)}</p><p className="text-xs text-gray-500">{count}/{MAX_PHOTOS} {t(displayLocale, 'checklist.photosCount')}</p></div>
                   </div>
                   <div className={'px-2.5 py-1 rounded-full text-xs font-medium ' + (full ? 'bg-red-100 text-red-700' : isUploading ? 'bg-yellow-100 text-yellow-800' : count > 0 ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-500')}>
-                    {full ? t(locale, 'checklist.retake') : isUploading ? t(locale, 'checklist.uploading') : count > 0 ? t(locale, 'checklist.retake') : t(locale, 'checklist.takePhoto')}
+                    {full ? t(displayLocale, 'checklist.full') : isUploading ? t(displayLocale, 'checklist.uploadingShort') : count > 0 ? t(displayLocale, 'checklist.add') : t(displayLocale, 'checklist.take')}
                   </div>
                 </div>
                 {previews.length > 0 && (
@@ -327,18 +391,17 @@ export default function Home() {
             );
           })}
         </div>
-
         {totalPhotos > 0 && (
           <button onClick={handleSubmit} disabled={isSubmitting}
             className="w-full py-5 rounded-2xl text-white font-extrabold text-lg tracking-wide transition-all shadow-lg shadow-green-200 hover:shadow-xl active:scale-[0.98]"
             style={{ backgroundColor: isSubmitting ? '#9ca3af' : '#16a34a' }}>
             {isSubmitting
-              ? <span className="flex items-center justify-center gap-2"><span className="animate-spin h-5 w-5 border-2 border-white border-t-transparent rounded-full" />{t(locale, 'checklist.submitting')}</span>
-              : <span>{t(locale, 'checklist.submitCheckin')}<span className="block text-sm font-normal opacity-80 mt-0.5">{totalPhotos} foto pronte</span></span>
+              ? <span className="flex items-center justify-center gap-2"><span className="animate-spin h-5 w-5 border-2 border-white border-t-transparent rounded-full" />{t(displayLocale, 'checklist.submitting')}</span>
+              : <span>{t(displayLocale, 'checklist.completeInspection')}<span className="block text-sm font-normal opacity-80 mt-0.5">{totalPhotos} {t(displayLocale, 'checklist.photosReady')}</span></span>
             }
           </button>
         )}
-        {totalPhotos === 0 && <p className="text-center text-xs text-gray-400">{t(locale, 'checklist.completeAll')}</p>}
+        {totalPhotos === 0 && <p className="text-center text-xs text-gray-400">{t(displayLocale, 'checklist.takeAtLeastOne')}</p>}
       </div>
       <div className="h-10" />
     </div>
@@ -347,22 +410,19 @@ export default function Home() {
   /* ADMIN */
   return (
     <div className="min-h-screen" style={{ backgroundColor: '#f5f5f0' }}>
-      <div className="fixed top-3 right-3 z-50">
-        <LanguageSelector locale={locale} setLocale={setLocale} />
-      </div>
       <div className="px-6 py-5" style={{ backgroundColor: '#1a1a1a' }}>
         <div className="max-w-6xl mx-auto flex items-center gap-3">
           <div className="w-10 h-10 rounded-lg flex items-center justify-center font-black text-lg" style={{ backgroundColor: '#FFCB05', color: '#1a1a1a' }}>H</div>
-          <div><h1 className="text-xl font-bold text-white tracking-wide">HERTZ MALTA</h1><p className="text-xs text-gray-400">{t(locale, 'admin.subtitle')}</p></div>
+          <div><h1 className="text-xl font-bold text-white tracking-wide">HERTZ MALTA</h1><p className="text-xs text-gray-400">{t(displayLocale, 'admin.subtitle')}</p></div>
         </div>
       </div>
       <div className="max-w-6xl mx-auto px-4 py-6">
         <div className="grid grid-cols-4 gap-3 mb-6">
           {[
-            { label: t(locale, 'admin.totalContracts'), value: contracts.length, bg: '#fff', bc: '#e5e5e5', c: '#1a1a1a' },
-            { label: t(locale, 'admin.pending'), value: contracts.filter(c => c.status === 'pending').length, bg: '#fff', bc: '#e5e5e5', c: '#666' },
-            { label: t(locale, 'admin.inProgress'), value: contracts.filter(c => c.status === 'in_progress').length, bg: '#FFCB05', bc: '#e6b800', c: '#1a1a1a' },
-            { label: t(locale, 'admin.completed'), value: contracts.filter(c => c.status === 'completed').length, bg: '#22c55e', bc: '#16a34a', c: '#fff' },
+            { label: t(displayLocale, 'admin.totalContracts'), value: contracts.length, bg: '#fff', bc: '#e5e5e5', c: '#1a1a1a' },
+            { label: t(displayLocale, 'admin.pending'), value: contracts.filter(c => c.status === 'pending').length, bg: '#fff', bc: '#e5e5e5', c: '#666' },
+            { label: t(displayLocale, 'admin.inProgress'), value: contracts.filter(c => c.status === 'in_progress').length, bg: '#FFCB05', bc: '#e6b800', c: '#1a1a1a' },
+            { label: t(displayLocale, 'admin.completed'), value: contracts.filter(c => c.status === 'completed').length, bg: '#22c55e', bc: '#16a34a', c: '#fff' },
           ].map(s => (
             <div key={s.label} className="rounded-xl p-4 shadow-sm" style={{ backgroundColor: s.bg, border: '1px solid ' + s.bc }}>
               <p className="text-2xl font-bold" style={{ color: s.c }}>{s.value}</p>
@@ -371,70 +431,96 @@ export default function Home() {
           ))}
         </div>
         <div className="flex flex-wrap gap-3 mb-6">
-          <button onClick={() => setShowCreate(true)} className="text-sm font-medium px-4 py-2 rounded-lg text-white" style={{ backgroundColor: '#1a1a1a' }}>+ {t(locale, 'admin.newContract')}</button>
+          <button onClick={() => setShowCreate(true)} className="text-sm font-medium px-4 py-2 rounded-lg text-white" style={{ backgroundColor: '#1a1a1a' }}>+ {t(displayLocale, 'admin.newContract')}</button>
           <label className="cursor-pointer text-sm font-medium px-4 py-2 rounded-lg border bg-white flex items-center gap-2" style={{ borderColor: '#ccc', color: '#333' }}>
-            {uploading ? t(locale, 'admin.processing') : t(locale, 'admin.bulkUpload')}
+            {uploading ? t(displayLocale, 'admin.processing') : t(displayLocale, 'admin.bulkUpload')}
             <input type="file" accept=".xlsx,.xls,.csv" onChange={handleBulkUpload} className="hidden" disabled={uploading} />
           </label>
-          <button onClick={loadContracts} className="text-sm font-medium px-4 py-2 rounded-lg border bg-white" style={{ borderColor: '#ccc', color: '#333' }}>{t(locale, 'admin.refresh')}</button>
+          <button onClick={handleSyncCategories} disabled={syncing} className="text-sm font-medium px-4 py-2 rounded-lg border bg-white" style={{ borderColor: '#ccc', color: '#333' }}>{syncing ? 'Syncing...' : 'Sync Photo Categories'}</button>
+          {contracts.length > 0 && (
+            <button onClick={() => setDeleteAllConfirm(true)} className="text-sm font-medium px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700">{t(displayLocale, 'admin.deleteAll')}</button>
+          )}
         </div>
 
         {/* SEARCH BAR AND FILTER */}
-        <div className="flex flex-col sm:flex-row gap-3 mb-6">
+        <div className="flex flex-col sm:flex-row gap-3 mb-4">
           <div className="relative flex-1">
             <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
-            <input
-              type="text"
-              placeholder="Cerca per contratto, cliente, targa..."
-              value={searchQuery}
-              onChange={e => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-2.5 rounded-lg border bg-white text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-transparent"
-              style={{ borderColor: '#ccc' }}
-            />
+            <input type="text" placeholder={t(displayLocale, 'admin.searchPlaceholder')} value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="w-full pl-10 pr-4 py-2.5 rounded-lg border bg-white text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-transparent" style={{ borderColor: '#ccc' }} />
             {searchQuery && (
               <button onClick={() => setSearchQuery('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
               </button>
             )}
           </div>
-          <select
-            value={statusFilter}
-            onChange={e => setStatusFilter(e.target.value)}
-            className="px-4 py-2.5 rounded-lg border bg-white text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400"
-            style={{ borderColor: '#ccc' }}
-          >
-            <option value="all">Tutti gli stati</option>
-            <option value="pending">Pending</option>
-            <option value="in_progress">In Progress</option>
-            <option value="completed">Completed</option>
+          <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className="px-4 py-2.5 rounded-lg border bg-white text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400" style={{ borderColor: '#ccc' }}>
+            <option value="all">{t(displayLocale, 'admin.allStatuses')}</option>
+            <option value="pending">{t(displayLocale, 'admin.pending')}</option>
+            <option value="in_progress">{t(displayLocale, 'admin.inProgress')}</option>
+            <option value="completed">{t(displayLocale, 'admin.completed')}</option>
           </select>
         </div>
 
+        {/* SELECT ALL + BULK ACTIONS */}
+        {contracts.length > 0 && (
+          <div className="flex items-center gap-3 mb-4 px-1">
+            <label className="flex items-center gap-2 cursor-pointer text-sm text-gray-600">
+              <input type="checkbox" checked={selectedContracts.size === filteredContracts().length && filteredContracts().length > 0} onChange={toggleSelectAll} className="w-4 h-4 rounded border-gray-300 accent-yellow-500" />
+              {t(displayLocale, 'admin.selectAll')}
+            </label>
+            {selectedContracts.size > 0 && (
+              <>
+                <span className="text-xs text-gray-400">{selectedContracts.size} {t(displayLocale, 'admin.selected')}</span>
+                <button onClick={() => setDeleteAllConfirm(true)} className="text-xs font-medium px-3 py-1.5 rounded-lg bg-red-600 text-white hover:bg-red-700">
+                  {t(displayLocale, 'admin.delete')} ({selectedContracts.size})
+                </button>
+              </>
+            )}
+          </div>
+        )}
+
         {bulkResult && (
           <div className="bg-white rounded-xl p-4 border mb-6" style={{ borderColor: '#e5e5e5' }}>
-            <h3 className="font-semibold text-gray-800 mb-2">{t(locale, 'admin.uploadSuccess')}</h3>
-            <p className="text-sm text-gray-600">{bulkResult.summary.created} {t(locale, 'admin.created')}, {bulkResult.summary.skipped} {t(locale, 'admin.skipped')}, {bulkResult.summary.errors} {t(locale, 'admin.errors')}</p>
-            <details className="mt-2"><summary className="text-xs text-gray-500 cursor-pointer">{t(locale, 'admin.results')}</summary>
+            <h3 className="font-semibold text-gray-800 mb-2">{t(displayLocale, 'admin.uploadSuccess')}</h3>
+            <p className="text-sm text-gray-600">{bulkResult.summary.created} {t(displayLocale, 'admin.created')}, {bulkResult.summary.skipped} {t(displayLocale, 'admin.skipped')}, {bulkResult.summary.errors} {t(displayLocale, 'admin.errors')}</p>
+            <details className="mt-2"><summary className="text-xs text-gray-500 cursor-pointer">{t(displayLocale, 'admin.results')}</summary>
               <div className="mt-2 max-h-40 overflow-y-auto text-xs space-y-1">
                 {bulkResult.results?.map((r: any, i: number) => <div key={i} className={r.status === 'error' ? 'text-red-600' : r.status === 'skipped' ? 'text-yellow-600' : 'text-green-600'}>Row {r.row}: {r.contractNumber} - {r.customerName} [{r.status}]{r.error && ' - ' + r.error}</div>)}
               </div>
             </details>
-            <button onClick={() => setBulkResult(null)} className="mt-2 text-xs text-gray-400">Chiudi</button>
+            <button onClick={() => setBulkResult(null)} className="mt-2 text-xs text-gray-400">Close</button>
           </div>
         )}
         {showCreate && (
           <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-40 p-4" onClick={() => setShowCreate(false)}>
             <form onSubmit={handleCreateContract} onClick={e => e.stopPropagation()} className="bg-white rounded-2xl p-6 shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto">
-              <h2 className="font-semibold text-gray-800 mb-1 text-lg">{t(locale, 'admin.newContractTitle')}</h2>
-              <p className="text-xs text-gray-500 mb-4">{t(locale, 'admin.newContractDesc')}</p>
+              <h2 className="font-semibold text-gray-800 mb-1 text-lg">{t(displayLocale, 'admin.newContractTitle')}</h2>
+              <p className="text-xs text-gray-500 mb-4">{t(displayLocale, 'admin.newContractDesc')}</p>
               <div className="space-y-3">
-                {[{ key: 'contractNumber', label: t(locale, 'admin.contractNumber'), required: true },{ key: 'customerName', label: t(locale, 'admin.customerName'), required: true },{ key: 'vehiclePlate', label: t(locale, 'admin.vehiclePlate') },{ key: 'vehicleModel', label: t(locale, 'admin.vehicleModel') },{ key: 'customerEmail', label: t(locale, 'admin.customerEmail') },{ key: 'customerPhone', label: t(locale, 'admin.customerPhone') },{ key: 'vehicleColor', label: t(locale, 'admin.vehicleColor') }].map(f => (
+                {[{ key: 'contractNumber', label: t(displayLocale, 'admin.contractNumber'), required: true },{ key: 'customerName', label: t(displayLocale, 'admin.customerName'), required: true },{ key: 'vehiclePlate', label: t(displayLocale, 'admin.vehiclePlate') },{ key: 'vehicleModel', label: t(displayLocale, 'admin.vehicleModel') },{ key: 'customerEmail', label: t(displayLocale, 'admin.customerEmail') },{ key: 'customerPhone', label: t(displayLocale, 'admin.customerPhone') },{ key: 'vehicleColor', label: t(displayLocale, 'admin.vehicleColor') }].map(f => (
                   <div key={f.key}><label className="block text-xs font-medium text-gray-600 mb-1">{f.label}{f.required && '*'}</label><input type="text" value={(createForm as any)[f.key]} onChange={e => setCreateForm(p => ({ ...p, [f.key]: e.target.value }))} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" required={f.required} /></div>
                 ))}
               </div>
               <div className="flex gap-2 mt-5">
-                <button type="submit" className="flex-1 text-white py-2.5 rounded-lg text-sm font-medium" style={{ backgroundColor: '#1a1a1a' }}>{t(locale, 'admin.createAndGenerate')}</button>
+                <button type="submit" className="flex-1 text-white py-2.5 rounded-lg text-sm font-medium" style={{ backgroundColor: '#1a1a1a' }}>{t(displayLocale, 'admin.createAndGenerate')}</button>
                 <button type="button" onClick={() => setShowCreate(false)} className="px-4 py-2.5 bg-gray-100 text-gray-700 rounded-lg text-sm">Cancel</button>
+              </div>
+            </form>
+          </div>
+        )}
+        {editContract && (
+          <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-40 p-4" onClick={() => setEditContract(null)}>
+            <form onSubmit={handleEditContract} onClick={e => e.stopPropagation()} className="bg-white rounded-2xl p-6 shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto">
+              <h2 className="font-semibold text-gray-800 mb-1 text-lg">Edit Contract</h2>
+              <p className="text-xs text-gray-500 mb-4">Modify contract details below.</p>
+              <div className="space-y-3">
+                {[{ key: 'contractNumber', label: t(displayLocale, 'admin.contractNumber'), required: true },{ key: 'customerName', label: t(displayLocale, 'admin.customerName'), required: true },{ key: 'vehiclePlate', label: t(displayLocale, 'admin.vehiclePlate') },{ key: 'vehicleModel', label: t(displayLocale, 'admin.vehicleModel') },{ key: 'customerEmail', label: t(displayLocale, 'admin.customerEmail') },{ key: 'customerPhone', label: t(displayLocale, 'admin.customerPhone') },{ key: 'vehicleColor', label: t(displayLocale, 'admin.vehicleColor') }].map(f => (
+                  <div key={f.key}><label className="block text-xs font-medium text-gray-600 mb-1">{f.label}{f.required && '*'}</label><input type="text" value={(editContract as any)[f.key]} onChange={e => setEditContract(p => p ? { ...p, [f.key]: e.target.value } : null)} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" required={f.required} /></div>
+                ))}
+              </div>
+              <div className="flex gap-2 mt-5">
+                <button type="submit" className="flex-1 text-white py-2.5 rounded-lg text-sm font-medium" style={{ backgroundColor: '#1a1a1a' }}>Save Changes</button>
+                <button type="button" onClick={() => setEditContract(null)} className="px-4 py-2.5 bg-gray-100 text-gray-700 rounded-lg text-sm">Cancel</button>
               </div>
             </form>
           </div>
@@ -443,16 +529,16 @@ export default function Home() {
           <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-40 p-4" onClick={() => { setGeneratedToken(null); setTokenDialog(null); }}>
             <div onClick={e => e.stopPropagation()} className="bg-white rounded-2xl p-6 shadow-xl max-w-md w-full">
               {generatedToken ? (<>
-                <h2 className="font-semibold text-gray-800 mb-1 text-lg">{t(locale, 'admin.linkGenerated')}</h2>
+                <h2 className="font-semibold text-gray-800 mb-1 text-lg">{t(displayLocale, 'admin.linkGenerated')}</h2>
                 <div className="rounded-xl p-3 break-all text-sm font-mono mb-4" style={{ backgroundColor: '#f5f5f0' }}>{window.location.origin}{generatedToken.link}</div>
                 <div className="flex gap-2">
-                  <button onClick={() => copyToClip(window.location.origin + generatedToken.link, 'dialog')} className="flex-1 text-white py-2.5 rounded-lg text-sm font-medium" style={{ backgroundColor: '#1a1a1a' }}>{copied === 'dialog' ? 'Copiato!' : t(locale, 'admin.copyLink')}</button>
-                  <button onClick={() => { setGeneratedToken(null); setTokenDialog(null); }} className="px-4 py-2.5 bg-gray-100 text-gray-700 rounded-lg text-sm">Chiudi</button>
+                  <button onClick={() => copyToClip(window.location.origin + generatedToken.link, 'dialog')} className="flex-1 text-white py-2.5 rounded-lg text-sm font-medium" style={{ backgroundColor: '#1a1a1a' }}>{copied === 'dialog' ? 'Copied!' : t(displayLocale, 'admin.copyLink')}</button>
+                  <button onClick={() => { setGeneratedToken(null); setTokenDialog(null); }} className="px-4 py-2.5 bg-gray-100 text-gray-700 rounded-lg text-sm">Close</button>
                 </div>
               </>) : tokenDialog ? (<>
-                <h2 className="font-semibold text-gray-800 mb-4">{t(locale, 'admin.generateToken')}</h2>
-                <p className="text-sm text-gray-600 mb-4">Contratto: <strong>{tokenDialog.contractNumber}</strong></p>
-                <button onClick={() => handleGenerateToken(tokenDialog.contractId)} className="w-full text-white py-2.5 rounded-lg text-sm font-medium" style={{ backgroundColor: '#1a1a1a' }}>{t(locale, 'admin.generate')}</button>
+                <h2 className="font-semibold text-gray-800 mb-4">{t(displayLocale, 'admin.generateToken')}</h2>
+                <p className="text-sm text-gray-600 mb-4">Contract: <strong>{tokenDialog.contractNumber}</strong></p>
+                <button onClick={() => handleGenerateToken(tokenDialog.contractId)} className="w-full text-white py-2.5 rounded-lg text-sm font-medium" style={{ backgroundColor: '#1a1a1a' }}>{t(displayLocale, 'admin.generate')}</button>
               </>) : null}
             </div>
           </div>
@@ -460,26 +546,27 @@ export default function Home() {
         <div className="bg-white rounded-xl shadow-sm overflow-hidden" style={{ border: '1px solid #e5e5e5' }}>
           <div className="px-6 py-4 border-b" style={{ borderColor: '#e5e5e5', backgroundColor: '#fafaf5' }}>
             <div className="flex items-center justify-between">
-              <h2 className="font-semibold text-gray-800">{t(locale, 'admin.contracts')}</h2>
+              <h2 className="font-semibold text-gray-800">{t(displayLocale, 'admin.contracts')}</h2>
               {(searchQuery || statusFilter !== 'all') && (
-                <span className="text-xs text-gray-500">{filteredContracts().length} di {contracts.length} contratti</span>
+                <span className="text-xs text-gray-500">{filteredContracts().length} of {contracts.length} contracts</span>
               )}
             </div>
           </div>
           {filteredContracts().length === 0 ? (
             <div className="p-8 text-center text-gray-400">
-              {contracts.length === 0 ? t(locale, 'admin.noContracts') : 'Nessun contratto trovato per la ricerca'}
+              {contracts.length === 0 ? t(displayLocale, 'admin.noContracts') : 'No contracts found for this search'}
             </div>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full">
-                <thead><tr style={{ backgroundColor: '#1a1a1a' }}>{['Contract','Client','Vehicle','Status','Photos','Tokens','Actions'].map(h => <th key={h} className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase">{h}</th>)}</tr></thead>
+                <thead><tr style={{ backgroundColor: '#1a1a1a' }}>{['','Contract','Client','Vehicle','Status','Photos','Tokens','Actions'].map(h => <th key={h} className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase">{h}</th>)}</tr></thead>
                 <tbody className="divide-y" style={{ borderColor: '#f0f0f0' }}>
                   {filteredContracts().map(c => (
-                    <tr key={c.id} className="hover:bg-gray-50">
+                    <tr key={c.id} className={'hover:bg-gray-50' + (selectedContracts.has(c.id) ? ' bg-yellow-50' : '')}>
+                      <td className="px-4 py-3"><input type="checkbox" checked={selectedContracts.has(c.id)} onChange={() => toggleSelectContract(c.id)} className="w-4 h-4 rounded border-gray-300 accent-yellow-500" /></td>
                       <td className="px-4 py-3 text-sm font-medium text-gray-800">{c.contractNumber}</td>
                       <td className="px-4 py-3 text-sm text-gray-600"><div>{c.customerName}</div>{c.customerEmail && <div className="text-xs text-gray-400">{c.customerEmail}</div>}</td>
-                      <td className="px-4 py-3 text-sm text-gray-600"><div>{c.vehicleModel}</div><div className="text-xs text-gray-400">{c.vehiclePlate}</div></td>
+                      <td className="px-4 py-3 text-sm text-gray-600"><div>{c.vehicleModel}</div><div className="text-xs text-gray-400">{c.vehiclePlate}</div>}</td>
                       <td className="px-4 py-3"><span className={'inline-flex px-2 py-0.5 rounded-full text-xs font-medium ' + statusBadge(c.status)}>{c.status}</span></td>
                       <td className="px-4 py-3 text-sm text-gray-600">{c.photosSubmitted}</td>
                       <td className="px-4 py-3">
@@ -488,14 +575,25 @@ export default function Home() {
                             const link = window.location.origin + '/#token=' + tk.token;
                             return (<div key={tk.id} className="flex items-center gap-1.5">
                               <span className={'w-1.5 h-1.5 rounded-full ' + (tk.usedAt ? 'bg-gray-300' : tk.isExpired ? 'bg-red-400' : 'bg-green-400')} />
-                              <span className="text-xs text-gray-500">{tk.usedAt ? 'Usato' : tk.isExpired ? 'Scaduto' : 'Attivo'}</span>
-                              <button onClick={() => copyToClip(link, tk.id)} className="text-xs px-1.5 py-0.5 rounded font-medium" style={{ backgroundColor: copied === tk.id ? '#22c55e' : '#FFCB05', color: copied === tk.id ? '#fff' : '#1a1a1a' }}>{copied === tk.id ? 'OK' : 'Copia'}</button>
+                              <span className="text-xs text-gray-500">{tk.usedAt ? 'Used' : tk.isExpired ? 'Expired' : 'Active'}</span>
+                              <button onClick={() => copyToClip(link, tk.id)} className="text-xs px-1.5 py-0.5 rounded font-medium" style={{ backgroundColor: copied === tk.id ? '#22c55e' : '#FFCB05', color: copied === tk.id ? '#fff' : '#1a1a1a' }}>{copied === tk.id ? 'OK' : 'Copy'}</button>
                             </div>);
                           })}
-                          {c.tokens.length === 0 && <span className="text-xs text-gray-400">Nessun token</span>}
+                          {c.tokens.length === 0 && <span className="text-xs text-gray-400">No token</span>}
                         </div>
                       </td>
-                      <td className="px-4 py-3"><button onClick={() => { setTokenDialog({ contractId: c.id, contractNumber: c.contractNumber }); setGeneratedToken(null); }} className="text-xs font-medium px-2 py-1 rounded" style={{ backgroundColor: '#1a1a1a', color: '#FFCB05' }}>+ Token</button></td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-1.5">
+                          <button onClick={() => { setTokenDialog({ contractId: c.id, contractNumber: c.contractNumber }); setGeneratedToken(null); }} className="text-xs font-medium px-2 py-1 rounded" style={{ backgroundColor: '#1a1a1a', color: '#FFCB05' }}>+ Token</button>
+                          <button onClick={() => setEditContract({ id: c.id, contractNumber: c.contractNumber, customerName: c.customerName, customerEmail: c.customerEmail || '', customerPhone: c.customerPhone || '', vehiclePlate: c.vehiclePlate, vehicleModel: c.vehicleModel, vehicleColor: c.vehicleColor || '' })} className="text-xs font-medium px-2 py-1 rounded bg-blue-600 text-white">Edit</button>
+                          {deleteConfirm === c.id ? (<div className="flex items-center gap-1">
+                            <button onClick={() => handleDeleteContract(c.id)} className="text-xs font-medium px-2 py-1 rounded bg-red-600 text-white">Yes</button>
+                            <button onClick={() => setDeleteConfirm(null)} className="text-xs font-medium px-2 py-1 rounded bg-gray-300 text-gray-700">No</button>
+                          </div>) : (
+                            <button onClick={() => setDeleteConfirm(c.id)} className="text-xs font-medium px-2 py-1 rounded bg-red-100 text-red-700">Del</button>
+                          )}
+                        </div>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -503,6 +601,28 @@ export default function Home() {
             </div>
           )}
         </div>
+
+        {/* DELETE ALL CONFIRMATION */}
+        {deleteAllConfirm && (
+          <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4" onClick={() => setDeleteAllConfirm(false)}>
+            <div onClick={e => e.stopPropagation()} className="bg-white rounded-2xl p-6 shadow-xl max-w-md w-full">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center">
+                  <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" /></svg>
+                </div>
+                <div>
+                  <h3 className="font-semibold text-gray-800 text-lg">{t(displayLocale, 'admin.deleteAll')}</h3>
+                  <p className="text-sm text-gray-500">{selectedContracts.size > 0 ? `${selectedContracts.size} ${t(displayLocale, 'admin.selected')}` : `${contracts.length} contracts`}</p>
+                </div>
+              </div>
+              <p className="text-sm text-gray-600 mb-6">{t(displayLocale, 'admin.deleteAllConfirm')}</p>
+              <div className="flex gap-3">
+                <button onClick={handleDeleteSelected} className="flex-1 bg-red-600 text-white py-2.5 rounded-lg text-sm font-medium hover:bg-red-700">{t(displayLocale, 'admin.deleteAll')}</button>
+                <button onClick={() => setDeleteAllConfirm(false)} className="flex-1 bg-gray-100 text-gray-700 py-2.5 rounded-lg text-sm font-medium">Cancel</button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
