@@ -73,6 +73,8 @@ function CarDiagram({ onSelect, photoCounts }: { onSelect: (key: string) => void
 
 export default function Home() {
   const [locale, setLocale] = useState<Locale>('it');
+  // Customer must explicitly pick a language before seeing the photo checklist.
+  const [languageSelected, setLanguageSelected] = useState(false);
   const [mode, setMode] = useState<'loading' | 'admin' | 'customer' | 'completed'>('loading');
   const [token, setToken] = useState('');
   const [contracts, setContracts] = useState<AdminContract[]>([]);
@@ -106,7 +108,7 @@ export default function Home() {
   useEffect(() => {
     const hash = window.location.hash;
     if (hash.startsWith('#token=')) { const tk = hash.replace('#token=', ''); setToken(tk); setMode('customer'); validateToken(tk); }
-    else { setMode('admin'); loadContracts(); }
+    else { setLocale('en'); setMode('admin'); loadContracts(); }
   }, []);
 
   const validateToken = async (tk: string) => {
@@ -124,7 +126,7 @@ export default function Home() {
 
   const openCamera = (key: string) => {
     const count = photoCounts[key] || 0;
-    if (count >= MAX_PHOTOS) { setError('Massimo ' + MAX_PHOTOS + ' foto per questo angolo.'); return; }
+    if (count >= MAX_PHOTOS) { setError(t(locale, 'checklist.maxPhotosReached')); return; }
     const item = checklist.find(c => c.key === key);
     if (!item) return;
     setActiveKey(key); setError('');
@@ -162,6 +164,11 @@ export default function Home() {
   };
 
   const totalPhotos = Object.values(photoCounts).reduce((s, c) => s + c, 0);
+
+  // Only Italian (default) and English (set by admin) labels exist in the DB.
+  // Every other language falls back to Italian for the requirement label itself,
+  // while all surrounding UI copy still uses the chosen locale via t().
+  const getLabel = (item: ChecklistItem) => (locale === 'en' && item.labelEn ? item.labelEn : item.label);
 
   const handleSubmit = async () => {
     if (totalPhotos === 0 || isSubmitting) return;
@@ -234,6 +241,29 @@ export default function Home() {
     </div>
   );
 
+  /* CUSTOMER — mandatory language selection */
+  if (mode === 'customer' && !languageSelected) return (
+    <div className="min-h-screen flex items-center justify-center p-4" style={{ backgroundColor: '#1a1a1a' }}>
+      <div className="bg-white rounded-2xl shadow-xl p-6 max-w-md w-full">
+        <div className="text-center mb-6">
+          <h1 className="text-lg font-bold text-gray-900">HERTZ MALTA</h1>
+          <p className="text-sm text-gray-500 mt-1">Choose your language / Scegli la tua lingua</p>
+        </div>
+        <div className="grid grid-cols-2 gap-2">
+          {LOCALES.map(l => (
+            <button
+              key={l.code}
+              onClick={() => { setLocale(l.code); setLanguageSelected(true); }}
+              className="px-3 py-3 rounded-xl border-2 border-gray-200 text-sm font-medium text-gray-800 hover:border-yellow-400 hover:bg-yellow-50 transition-colors active:scale-[0.98]"
+            >
+              {l.nativeName}
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+
   /* CUSTOMER */
   if (mode === 'customer') return (
     <div className="min-h-screen bg-gray-50">
@@ -246,6 +276,7 @@ export default function Home() {
             <div><h1 className="text-lg font-bold text-white">HERTZ MALTA</h1><p className="text-xs" style={{ color: '#FFCB05' }}>{t(locale, 'app.title')}</p></div>
             {contract && <div className="text-right"><p className="text-xs text-gray-400">{t(locale, 'confirm.contract')}</p><p className="text-sm font-semibold text-white">{contract.contractNumber}</p></div>}
           </div>
+          <button onClick={() => setLanguageSelected(false)} className="mt-2 text-xs underline" style={{ color: '#FFCB05' }}>{t(locale, 'checklist.changeLanguage')}</button>
           {contract && (
             <div className="mt-3 p-3 rounded-xl grid grid-cols-2 gap-2 text-sm" style={{ backgroundColor: 'rgba(255,203,5,0.1)', border: '1px solid rgba(255,203,5,0.2)' }}>
               <div><span className="text-xs" style={{ color: '#FFCB05' }}>{t(locale, 'checklist.customer')}</span><p className="font-medium text-white">{contract.customerName}</p></div>
@@ -277,10 +308,10 @@ export default function Home() {
                     <div className={'w-9 h-9 rounded-full flex items-center justify-center text-sm ' + (full ? 'bg-red-100' : count > 0 ? 'bg-green-100' : 'bg-gray-100')}>
                       {isUploading ? <div className="animate-spin h-4 w-4 border-2 border-yellow-500 border-t-transparent rounded-full" /> : full ? '\uD83D\uDD1D' : count > 0 ? '\u2713' : '\uD83D\uDCF7'}
                     </div>
-                    <div><p className="font-semibold text-gray-800 text-sm">{item.label}</p><p className="text-xs text-gray-500">{count}/{MAX_PHOTOS} foto</p></div>
+                    <div><p className="font-semibold text-gray-800 text-sm">{getLabel(item)}</p><p className="text-xs text-gray-500">{count}/{MAX_PHOTOS} {t(locale, 'checklist.photosCount')}</p></div>
                   </div>
                   <div className={'px-2.5 py-1 rounded-full text-xs font-medium ' + (full ? 'bg-red-100 text-red-700' : isUploading ? 'bg-yellow-100 text-yellow-800' : count > 0 ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-500')}>
-                    {full ? 'Completo' : isUploading ? 'Uploading...' : count > 0 ? 'Aggiungi' : 'Scatta'}
+                    {full ? t(locale, 'checklist.full') : isUploading ? t(locale, 'checklist.uploadingShort') : count > 0 ? t(locale, 'checklist.add') : t(locale, 'checklist.take')}
                   </div>
                 </div>
                 {previews.length > 0 && (
@@ -300,12 +331,12 @@ export default function Home() {
             className="w-full py-5 rounded-2xl text-white font-extrabold text-lg tracking-wide transition-all shadow-lg shadow-green-200 hover:shadow-xl active:scale-[0.98]"
             style={{ backgroundColor: isSubmitting ? '#9ca3af' : '#16a34a' }}>
             {isSubmitting
-              ? <span className="flex items-center justify-center gap-2"><span className="animate-spin h-5 w-5 border-2 border-white border-t-transparent rounded-full" />Invio in corso...</span>
-              : <span>COMPLETA ISPEZIONE<span className="block text-sm font-normal opacity-80 mt-0.5">{totalPhotos} foto pronte</span></span>
+              ? <span className="flex items-center justify-center gap-2"><span className="animate-spin h-5 w-5 border-2 border-white border-t-transparent rounded-full" />{t(locale, 'checklist.submitting')}</span>
+              : <span>{t(locale, 'checklist.completeInspection')}<span className="block text-sm font-normal opacity-80 mt-0.5">{totalPhotos} {t(locale, 'checklist.photosReady')}</span></span>
             }
           </button>
         )}
-        {totalPhotos === 0 && <p className="text-center text-xs text-gray-400">Scatta almeno una foto per completare l'ispezione</p>}
+        {totalPhotos === 0 && <p className="text-center text-xs text-gray-400">{t(locale, 'checklist.takeAtLeastOne')}</p>}
       </div>
       <div className="h-10" />
     </div>
@@ -314,11 +345,6 @@ export default function Home() {
   /* ADMIN */
   return (
     <div className="min-h-screen" style={{ backgroundColor: '#f5f5f0' }}>
-      <div className="fixed top-3 right-3 z-50">
-        <select value={locale} onChange={e => setLocale(e.target.value as Locale)} className="text-xs border border-gray-300 rounded-lg px-2 py-1.5 bg-white shadow-sm">
-          {LOCALES.map(l => <option key={l.code} value={l.code}>{l.nativeName}</option>)}
-        </select>
-      </div>
       <div className="px-6 py-5" style={{ backgroundColor: '#1a1a1a' }}>
         <div className="max-w-6xl mx-auto flex items-center gap-3">
           <div className="w-10 h-10 rounded-lg flex items-center justify-center font-black text-lg" style={{ backgroundColor: '#FFCB05', color: '#1a1a1a' }}>H</div>
@@ -354,7 +380,7 @@ export default function Home() {
             <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
             <input
               type="text"
-              placeholder="Cerca per contratto, cliente, targa..."
+              placeholder="Search by contract, customer, plate..."
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
               className="w-full pl-10 pr-4 py-2.5 rounded-lg border bg-white text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-transparent"
@@ -372,7 +398,7 @@ export default function Home() {
             className="px-4 py-2.5 rounded-lg border bg-white text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400"
             style={{ borderColor: '#ccc' }}
           >
-            <option value="all">Tutti gli stati</option>
+            <option value="all">All statuses</option>
             <option value="pending">Pending</option>
             <option value="in_progress">In Progress</option>
             <option value="completed">Completed</option>
@@ -388,7 +414,7 @@ export default function Home() {
                 {bulkResult.results?.map((r: any, i: number) => <div key={i} className={r.status === 'error' ? 'text-red-600' : r.status === 'skipped' ? 'text-yellow-600' : 'text-green-600'}>Row {r.row}: {r.contractNumber} - {r.customerName} [{r.status}]{r.error && ' - ' + r.error}</div>)}
               </div>
             </details>
-            <button onClick={() => setBulkResult(null)} className="mt-2 text-xs text-gray-400">Chiudi</button>
+            <button onClick={() => setBulkResult(null)} className="mt-2 text-xs text-gray-400">Close</button>
           </div>
         )}
         {showCreate && (
@@ -415,12 +441,12 @@ export default function Home() {
                 <h2 className="font-semibold text-gray-800 mb-1 text-lg">{t(locale, 'admin.linkGenerated')}</h2>
                 <div className="rounded-xl p-3 break-all text-sm font-mono mb-4" style={{ backgroundColor: '#f5f5f0' }}>{window.location.origin}{generatedToken.link}</div>
                 <div className="flex gap-2">
-                  <button onClick={() => copyToClip(window.location.origin + generatedToken.link, 'dialog')} className="flex-1 text-white py-2.5 rounded-lg text-sm font-medium" style={{ backgroundColor: '#1a1a1a' }}>{copied === 'dialog' ? 'Copiato!' : t(locale, 'admin.copyLink')}</button>
-                  <button onClick={() => { setGeneratedToken(null); setTokenDialog(null); }} className="px-4 py-2.5 bg-gray-100 text-gray-700 rounded-lg text-sm">Chiudi</button>
+                  <button onClick={() => copyToClip(window.location.origin + generatedToken.link, 'dialog')} className="flex-1 text-white py-2.5 rounded-lg text-sm font-medium" style={{ backgroundColor: '#1a1a1a' }}>{copied === 'dialog' ? 'Copied!' : t(locale, 'admin.copyLink')}</button>
+                  <button onClick={() => { setGeneratedToken(null); setTokenDialog(null); }} className="px-4 py-2.5 bg-gray-100 text-gray-700 rounded-lg text-sm">Close</button>
                 </div>
               </>) : tokenDialog ? (<>
                 <h2 className="font-semibold text-gray-800 mb-4">{t(locale, 'admin.generateToken')}</h2>
-                <p className="text-sm text-gray-600 mb-4">Contratto: <strong>{tokenDialog.contractNumber}</strong></p>
+                <p className="text-sm text-gray-600 mb-4">Contract: <strong>{tokenDialog.contractNumber}</strong></p>
                 <button onClick={() => handleGenerateToken(tokenDialog.contractId)} className="w-full text-white py-2.5 rounded-lg text-sm font-medium" style={{ backgroundColor: '#1a1a1a' }}>{t(locale, 'admin.generate')}</button>
               </>) : null}
             </div>
@@ -431,13 +457,13 @@ export default function Home() {
             <div className="flex items-center justify-between">
               <h2 className="font-semibold text-gray-800">{t(locale, 'admin.contracts')}</h2>
               {(searchQuery || statusFilter !== 'all') && (
-                <span className="text-xs text-gray-500">{filteredContracts().length} di {contracts.length} contratti</span>
+                <span className="text-xs text-gray-500">{filteredContracts().length} of {contracts.length} contracts</span>
               )}
             </div>
           </div>
           {filteredContracts().length === 0 ? (
             <div className="p-8 text-center text-gray-400">
-              {contracts.length === 0 ? t(locale, 'admin.noContracts') : 'Nessun contratto trovato per la ricerca'}
+              {contracts.length === 0 ? t(locale, 'admin.noContracts') : 'No contracts found for this search'}
             </div>
           ) : (
             <div className="overflow-x-auto">
@@ -457,11 +483,11 @@ export default function Home() {
                             const link = window.location.origin + '/#token=' + tk.token;
                             return (<div key={tk.id} className="flex items-center gap-1.5">
                               <span className={'w-1.5 h-1.5 rounded-full ' + (tk.usedAt ? 'bg-gray-300' : tk.isExpired ? 'bg-red-400' : 'bg-green-400')} />
-                              <span className="text-xs text-gray-500">{tk.usedAt ? 'Usato' : tk.isExpired ? 'Scaduto' : 'Attivo'}</span>
-                              <button onClick={() => copyToClip(link, tk.id)} className="text-xs px-1.5 py-0.5 rounded font-medium" style={{ backgroundColor: copied === tk.id ? '#22c55e' : '#FFCB05', color: copied === tk.id ? '#fff' : '#1a1a1a' }}>{copied === tk.id ? 'OK' : 'Copia'}</button>
+                              <span className="text-xs text-gray-500">{tk.usedAt ? 'Used' : tk.isExpired ? 'Expired' : 'Active'}</span>
+                              <button onClick={() => copyToClip(link, tk.id)} className="text-xs px-1.5 py-0.5 rounded font-medium" style={{ backgroundColor: copied === tk.id ? '#22c55e' : '#FFCB05', color: copied === tk.id ? '#fff' : '#1a1a1a' }}>{copied === tk.id ? 'OK' : 'Copy'}</button>
                             </div>);
                           })}
-                          {c.tokens.length === 0 && <span className="text-xs text-gray-400">Nessun token</span>}
+                          {c.tokens.length === 0 && <span className="text-xs text-gray-400">No token</span>}
                         </div>
                       </td>
                       <td className="px-4 py-3"><button onClick={() => { setTokenDialog({ contractId: c.id, contractNumber: c.contractNumber }); setGeneratedToken(null); }} className="text-xs font-medium px-2 py-1 rounded" style={{ backgroundColor: '#1a1a1a', color: '#FFCB05' }}>+ Token</button></td>
