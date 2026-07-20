@@ -137,19 +137,37 @@ export async function PUT(request: NextRequest) {
   }
 }
 
+// --- ELIMINAZIONE ROBUSTA ---
 export async function DELETE(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
     const id = searchParams.get('id')
+    
     if (!id) {
       return NextResponse.json({ error: 'Missing contract ID' }, { status: 400 })
     }
+
     const contract = await db.rentalContract.findUnique({ where: { id } })
     if (!contract) {
       return NextResponse.json({ error: 'Contract not found' }, { status: 404 })
     }
-    await db.rentalContract.delete({ where: { id } })
-    return NextResponse.json({ success: true, message: 'Contract deleted' })
+
+    // 1. Elimina prima tutte le foto collegate per evitare blocchi di chiave esterna
+    await db.photoSubmission.deleteMany({
+      where: { contractId: id }
+    })
+
+    // 2. Elimina tutti i token collegati
+    await db.accessToken.deleteMany({
+      where: { contractId: id }
+    })
+
+    // 3. Infine, elimina il contratto stesso
+    await db.rentalContract.delete({
+      where: { id }
+    })
+
+    return NextResponse.json({ success: true, message: 'Contract deleted successfully' })
   } catch (error) {
     console.error('Delete contract error:', error)
     const msg = error instanceof Error ? error.message : 'Unknown error'
