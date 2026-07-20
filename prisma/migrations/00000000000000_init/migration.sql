@@ -69,9 +69,6 @@ CREATE UNIQUE INDEX "AccessToken_token_key" ON "AccessToken"("token");
 -- CreateIndex
 CREATE UNIQUE INDEX "PhotoRequirement_key_key" ON "PhotoRequirement"("key");
 
--- CreateIndex
-CREATE UNIQUE INDEX "PhotoSubmission_contractId_requirementId_key" ON "PhotoSubmission"("contractId", "requirementId");
-
 -- AddForeignKey
 ALTER TABLE "AccessToken" ADD CONSTRAINT "AccessToken_contractId_fkey" FOREIGN KEY ("contractId") REFERENCES "RentalContract"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 

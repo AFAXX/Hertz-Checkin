@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { t, LOCALES, type Locale } from '@/lib/i18n';
 
 interface AdminContract {
@@ -76,6 +76,8 @@ export default function Home() {
   const [mode, setMode] = useState<'loading' | 'admin' | 'customer' | 'completed'>('loading');
   const [token, setToken] = useState('');
   const [contracts, setContracts] = useState<AdminContract[]>([]);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState<string>('all');
   const [showCreate, setShowCreate] = useState(false);
   const [createForm, setCreateForm] = useState({ contractNumber: '', customerName: '', customerEmail: '', customerPhone: '', vehiclePlate: '', vehicleModel: '', vehicleColor: '' });
   const [uploading, setUploading] = useState(false);
@@ -92,6 +94,14 @@ export default function Home() {
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const objectUrlsRef = useRef<string[]>([]);
+
+  // Cleanup object URLs on unmount to prevent memory leaks
+  useEffect(() => {
+    return () => {
+      objectUrlsRef.current.forEach(url => URL.revokeObjectURL(url));
+    };
+  }, []);
 
   useEffect(() => {
     const hash = window.location.hash;
@@ -138,8 +148,11 @@ export default function Home() {
         const res = await fetch('/api/photos/upload', { method: 'POST', body: fd });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || 'Upload failed');
-        setLocalPreviews(p => ({ ...p, [activeKey]: [...(p[activeKey] || []), URL.createObjectURL(file)] }));
-        setPhotoCounts(p => ({ ...p, [activeKey]: (p[activeKey] || 0) + 1 }));
+        // Create and track object URL to prevent memory leak
+        const objectUrl = URL.createObjectURL(file);
+        objectUrlsRef.current.push(objectUrl);
+        setLocalPreviews(p => ({ ...p, [activeKey!]: [...(p[activeKey!] || []), objectUrl] }));
+        setPhotoCounts(p => ({ ...p, [activeKey!]: (p[activeKey!] || 0) + 1 }));
         setChecklist(p => p.map(c => c.key === activeKey ? { ...c, completed: true, photoCount: c.photoCount + 1 } : c));
       } catch (err: unknown) { setError(err instanceof Error ? err.message : 'Upload failed'); }
       finally { setUploadingPhoto(null); }
@@ -185,6 +198,25 @@ export default function Home() {
   const copyToClip = (text: string, id: string) => { navigator.clipboard.writeText(text); setCopied(id); setTimeout(() => setCopied(''), 2000); };
   const statusBadge = (s: string) => s === 'completed' ? 'bg-green-100 text-green-800' : s === 'in_progress' ? 'bg-yellow-100 text-yellow-800' : 'bg-gray-100 text-gray-600';
 
+  // Filter contracts based on search query and status filter
+  const filteredContracts = useCallback(() => {
+    let result = contracts;
+    if (statusFilter !== 'all') {
+      result = result.filter(c => c.status === statusFilter);
+    }
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase().trim();
+      result = result.filter(c =>
+        c.contractNumber.toLowerCase().includes(q) ||
+        c.customerName.toLowerCase().includes(q) ||
+        c.vehiclePlate.toLowerCase().includes(q) ||
+        c.vehicleModel.toLowerCase().includes(q) ||
+        (c.customerEmail && c.customerEmail.toLowerCase().includes(q))
+      );
+    }
+    return result;
+  }, [contracts, searchQuery, statusFilter]);
+
   /* LOADING */
   if (mode === 'loading') return (<div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: '#1a1a1a' }}><div className="animate-spin h-10 w-10 border-4 border-yellow-400 border-t-transparent rounded-full" /></div>);
 
@@ -205,7 +237,8 @@ export default function Home() {
   /* CUSTOMER */
   if (mode === 'customer') return (
     <div className="min-h-screen bg-gray-50">
-      <input ref={fileInputRef} type="file" accept="image/*" capture="environment" multiple onChange={handleFileChange} className="hidden" />
+      {/* Removed capture="environment" to fix mobile multiple upload; removed "multiple" to avoid iOS Safari conflict */}
+      <input ref={fileInputRef} type="file" accept="image/*" capture="environment" onChange={handleFileChange} className="hidden" />
 
       <div style={{ backgroundColor: '#1a1a1a' }}>
         <div className="max-w-lg mx-auto px-4 py-4">
@@ -261,13 +294,14 @@ export default function Home() {
           })}
         </div>
 
+        {/* Complete inspection button - visible after at least 1 photo */}
         {totalPhotos > 0 && (
           <button onClick={handleSubmit} disabled={isSubmitting}
             className="w-full py-5 rounded-2xl text-white font-extrabold text-lg tracking-wide transition-all shadow-lg shadow-green-200 hover:shadow-xl active:scale-[0.98]"
             style={{ backgroundColor: isSubmitting ? '#9ca3af' : '#16a34a' }}>
             {isSubmitting
               ? <span className="flex items-center justify-center gap-2"><span className="animate-spin h-5 w-5 border-2 border-white border-t-transparent rounded-full" />Invio in corso...</span>
-              : <span>COMPLETE INSPECTION<span className="block text-sm font-normal opacity-80 mt-0.5">{totalPhotos} foto pronte</span></span>
+              : <span>COMPLETA ISPEZIONE<span className="block text-sm font-normal opacity-80 mt-0.5">{totalPhotos} foto pronte</span></span>
             }
           </button>
         )}
@@ -313,6 +347,38 @@ export default function Home() {
           </label>
           <button onClick={loadContracts} className="text-sm font-medium px-4 py-2 rounded-lg border bg-white" style={{ borderColor: '#ccc', color: '#333' }}>{t(locale, 'admin.refresh')}</button>
         </div>
+
+        {/* SEARCH BAR AND FILTER */}
+        <div className="flex flex-col sm:flex-row gap-3 mb-6">
+          <div className="relative flex-1">
+            <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+            <input
+              type="text"
+              placeholder="Cerca per contratto, cliente, targa..."
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              className="w-full pl-10 pr-4 py-2.5 rounded-lg border bg-white text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-transparent"
+              style={{ borderColor: '#ccc' }}
+            />
+            {searchQuery && (
+              <button onClick={() => setSearchQuery('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
+              </button>
+            )}
+          </div>
+          <select
+            value={statusFilter}
+            onChange={e => setStatusFilter(e.target.value)}
+            className="px-4 py-2.5 rounded-lg border bg-white text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400"
+            style={{ borderColor: '#ccc' }}
+          >
+            <option value="all">Tutti gli stati</option>
+            <option value="pending">Pending</option>
+            <option value="in_progress">In Progress</option>
+            <option value="completed">Completed</option>
+          </select>
+        </div>
+
         {bulkResult && (
           <div className="bg-white rounded-xl p-4 border mb-6" style={{ borderColor: '#e5e5e5' }}>
             <h3 className="font-semibold text-gray-800 mb-2">{t(locale, 'admin.uploadSuccess')}</h3>
@@ -362,14 +428,23 @@ export default function Home() {
         )}
         <div className="bg-white rounded-xl shadow-sm overflow-hidden" style={{ border: '1px solid #e5e5e5' }}>
           <div className="px-6 py-4 border-b" style={{ borderColor: '#e5e5e5', backgroundColor: '#fafaf5' }}>
-            <h2 className="font-semibold text-gray-800">{t(locale, 'admin.contracts')}</h2>
+            <div className="flex items-center justify-between">
+              <h2 className="font-semibold text-gray-800">{t(locale, 'admin.contracts')}</h2>
+              {(searchQuery || statusFilter !== 'all') && (
+                <span className="text-xs text-gray-500">{filteredContracts().length} di {contracts.length} contratti</span>
+              )}
+            </div>
           </div>
-          {contracts.length === 0 ? <div className="p-8 text-center text-gray-400">{t(locale, 'admin.noContracts')}</div> : (
+          {filteredContracts().length === 0 ? (
+            <div className="p-8 text-center text-gray-400">
+              {contracts.length === 0 ? t(locale, 'admin.noContracts') : 'Nessun contratto trovato per la ricerca'}
+            </div>
+          ) : (
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead><tr style={{ backgroundColor: '#1a1a1a' }}>{['Contract','Client','Vehicle','Status','Photos','Tokens','Actions'].map(h => <th key={h} className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase">{h}</th>)}</tr></thead>
                 <tbody className="divide-y" style={{ borderColor: '#f0f0f0' }}>
-                  {contracts.map(c => (
+                  {filteredContracts().map(c => (
                     <tr key={c.id} className="hover:bg-gray-50">
                       <td className="px-4 py-3 text-sm font-medium text-gray-800">{c.contractNumber}</td>
                       <td className="px-4 py-3 text-sm text-gray-600"><div>{c.customerName}</div>{c.customerEmail && <div className="text-xs text-gray-400">{c.customerEmail}</div>}</td>

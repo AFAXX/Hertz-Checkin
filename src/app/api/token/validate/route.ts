@@ -64,6 +64,13 @@ export async function POST(request: NextRequest) {
       orderBy: { orderIndex: 'asc' },
     })
 
+    // Count photos per requirement
+    const photoCountMap = new Map<string, number>()
+    for (const photo of accessToken.contract.photos) {
+      const key = photo.requirement.key
+      photoCountMap.set(key, (photoCountMap.get(key) || 0) + 1)
+    }
+
     // Map submitted photos
     const submittedKeys = new Set(
       accessToken.contract.photos.map((p) => p.requirement.key)
@@ -78,6 +85,7 @@ export async function POST(request: NextRequest) {
       icon: req.icon,
       required: req.required,
       completed: submittedKeys.has(req.key),
+      photoCount: photoCountMap.get(req.key) || 0,
     }))
 
     return NextResponse.json({

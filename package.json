@@ -7,6 +7,7 @@
     "build": "prisma generate && prisma migrate deploy && next build",
     "start": "next start",
     "lint": "eslint .",
+    "setup": "prisma generate && prisma db push && node -e \"fetch('http://localhost:3000/api/admin/seed',{method:'POST'}).then(r=>r.json()).then(d=>console.log('Seed:',JSON.stringify(d))).catch(()=>console.log('Seed: avvia prima npm run dev, poi rifai npm run setup'))\"",
     "db:push": "prisma db push",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
