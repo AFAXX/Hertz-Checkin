@@ -1,27 +1,106 @@
 'use client';
-
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { t, LOCALES, type Locale } from '@/lib/i18n';
 
 interface AdminContract {
   id: string; contractNumber: string; customerName: string; customerEmail: string | null; customerPhone: string | null;
   vehiclePlate: string; vehicleModel: string; vehicleColor: string | null; status: string; createdAt: string;
   tokens: Array<{ id: string; token: string; expiresAt: string; usedAt: string | null; isExpired: boolean }>;
-  photosSubmitted: number;
+  photosSubmitted: number; photos: Array<{ key: string; label: string; fileName: string; uploadedAt: string }>;
 }
-
 interface ChecklistItem {
-  id: string; key: string; label: string; description: string | null; required: boolean; completed: boolean; photoCount: number;
+  id: string; key: string; label: string; labelEn: string | null; description: string | null; icon: string | null;
+  required: boolean; completed: boolean; photoCount: number;
+}
+interface ValidatedContract {
+  id: string; contractNumber: string; customerName: string; vehiclePlate: string; vehicleModel: string; vehicleColor: string | null; status: string;
 }
 
 const MAX_PHOTOS = 10;
 
+function CarDiagram({ onSelect, photoCounts }: { onSelect: (key: string) => void; photoCounts: Record<string, number> }) {
+  const g = (k: string) => photoCounts[k] || 0;
+  const done = (k: string) => g(k) > 0;
+  return (
+    <svg viewBox="0 0 300 540" className="w-full max-w-[280px] mx-auto">
+      <path d="M108 510 Q60 490 48 430 L48 110 Q48 55 108 32 L192 32 Q252 55 252 110 L252 430 Q240 490 192 510 Z" fill="rgba(0,0,0,0.06)" transform="translate(4,4)" />
+      <path d="M108 510 Q60 490 48 430 L48 110 Q48 55 108 32 L192 32 Q252 55 252 110 L252 430 Q240 490 192 510 Z" fill="#f1f5f9" stroke="#94a3b8" strokeWidth="2.5" />
+      <path d="M120 430 L120 490 Q150 510 180 490 L180 430 Q150 420 120 430 Z" fill="#e2e8f0" stroke="#94a3b8" strokeWidth="1" opacity="0.5" />
+      <path d="M95 390 Q150 410 205 390 L185 350 Q150 365 115 350 Z" fill="#bfdbfe" stroke="#60a5fa" strokeWidth="1.5" />
+      <rect x="80" y="180" width="140" height="170" rx="20" fill="#e8ecf1" stroke="#b0b8c4" strokeWidth="1" />
+      <path d="M95 180 Q150 160 205 180 L185 215 Q150 200 115 215 Z" fill="#bfdbfe" stroke="#60a5fa" strokeWidth="1.5" />
+      <path d="M120 110 L120 180 Q150 170 180 180 L180 110 Q150 100 120 110 Z" fill="#e2e8f0" stroke="#94a3b8" strokeWidth="1" opacity="0.5" />
+      <rect x="38" y="365" width="12" height="20" rx="4" fill="#cbd5e1" stroke="#94a3b8" strokeWidth="1" />
+      <rect x="250" y="365" width="12" height="20" rx="4" fill="#cbd5e1" stroke="#94a3b8" strokeWidth="1" />
+      <ellipse cx="100" cy="478" rx="12" ry="8" fill="#fde68a" stroke="#f59e0b" strokeWidth="1.5" />
+      <ellipse cx="200" cy="478" rx="12" ry="8" fill="#fde68a" stroke="#f59e0b" strokeWidth="1.5" />
+      <ellipse cx="100" cy="60" rx="10" ry="7" fill="#fca5a5" stroke="#ef4444" strokeWidth="1.5" />
+      <ellipse cx="200" cy="60" rx="10" ry="7" fill="#fca5a5" stroke="#ef4444" strokeWidth="1.5" />
+      <ellipse cx="62" cy="155" rx="18" ry="28" fill="#334155" stroke="#1e293b" strokeWidth="2" />
+      <ellipse cx="62" cy="155" rx="8" ry="14" fill="#64748b" />
+      <ellipse cx="238" cy="155" rx="18" ry="28" fill="#334155" stroke="#1e293b" strokeWidth="2" />
+      <ellipse cx="238" cy="155" rx="8" ry="14" fill="#64748b" />
+      <ellipse cx="68" cy="420" rx="18" ry="26" fill="#334155" stroke="#1e293b" strokeWidth="2" />
+      <ellipse cx="68" cy="420" rx="8" ry="13" fill="#64748b" />
+      <ellipse cx="232" cy="420" rx="18" ry="26" fill="#334155" stroke="#1e293b" strokeWidth="2" />
+      <ellipse cx="232" cy="420" rx="8" ry="13" fill="#64748b" />
+      <g onClick={() => onSelect('front')} style={{ cursor: 'pointer' }}>
+        <rect x="90" y="435" width="120" height="60" rx="10" fill={done('front') ? 'rgba(34,197,94,0.15)' : 'rgba(148,163,184,0.05)'} stroke={done('front') ? '#22c55e' : '#94a3b8'} strokeWidth="1.5" strokeDasharray={done('front') ? 'none' : '5 3'} />
+        {g('front') > 0 && <><circle cx="200" cy="445" r="9" fill="#22c55e" /><text x="200" y="449" textAnchor="middle" fill="white" fontSize="9" fontWeight="bold">{g('front')}</text></>}
+      </g>
+      <g onClick={() => onSelect('back')} style={{ cursor: 'pointer' }}>
+        <rect x="90" y="75" width="120" height="60" rx="10" fill={done('back') ? 'rgba(34,197,94,0.15)' : 'rgba(148,163,184,0.05)'} stroke={done('back') ? '#22c55e' : '#94a3b8'} strokeWidth="1.5" strokeDasharray={done('back') ? 'none' : '5 3'} />
+        {g('back') > 0 && <><circle cx="200" cy="85" r="9" fill="#22c55e" /><text x="200" y="89" textAnchor="middle" fill="white" fontSize="9" fontWeight="bold">{g('back')}</text></>}
+      </g>
+      <g onClick={() => onSelect('passenger_side')} style={{ cursor: 'pointer' }}>
+        <rect x="28" y="195" width="50" height="130" rx="10" fill={done('passenger_side') ? 'rgba(34,197,94,0.15)' : 'rgba(148,163,184,0.05)'} stroke={done('passenger_side') ? '#22c55e' : '#94a3b8'} strokeWidth="1.5" strokeDasharray={done('passenger_side') ? 'none' : '5 3'} />
+        {g('passenger_side') > 0 && <><circle cx="68" cy="205" r="9" fill="#22c55e" /><text x="68" y="209" textAnchor="middle" fill="white" fontSize="9" fontWeight="bold">{g('passenger_side')}</text></>}
+      </g>
+      <g onClick={() => onSelect('driver_side')} style={{ cursor: 'pointer' }}>
+        <rect x="222" y="195" width="50" height="130" rx="10" fill={done('driver_side') ? 'rgba(34,197,94,0.15)' : 'rgba(148,163,184,0.05)'} stroke={done('driver_side') ? '#22c55e' : '#94a3b8'} strokeWidth="1.5" strokeDasharray={done('driver_side') ? 'none' : '5 3'} />
+        {g('driver_side') > 0 && <><circle cx="262" cy="205" r="9" fill="#22c55e" /><text x="262" y="209" textAnchor="middle" fill="white" fontSize="9" fontWeight="bold">{g('driver_side')}</text></>}
+      </g>
+      <text x="150" y="525" textAnchor="middle" fill="#475569" fontSize="11" fontWeight="700" letterSpacing="1">FRONT</text>
+      <text x="150" y="22" textAnchor="middle" fill="#475569" fontSize="11" fontWeight="700" letterSpacing="1">BACK</text>
+      <text x="14" y="265" textAnchor="middle" fill="#475569" fontSize="9" fontWeight="600" transform="rotate(-90,14,265)" letterSpacing="0.5">PASSENGER</text>
+      <text x="286" y="265" textAnchor="middle" fill="#475569" fontSize="9" fontWeight="600" transform="rotate(90,286,265)" letterSpacing="0.5">DRIVER</text>
+    </svg>
+  );
+}
+
+function LanguageSelector({ locale, setLocale, dark = false }: { locale: Locale; setLocale: (l: Locale) => void; dark?: boolean }) {
+  const [open, setOpen] = useState(false);
+  const currentLocale = LOCALES.find(l => l.code === locale) || LOCALES[0];
+  return (
+    <div className="relative">
+      <button onClick={() => setOpen(!open)} className={'flex items-center gap-1.5 text-xs font-medium px-2.5 py-1.5 rounded-lg border transition-colors ' + (dark ? 'border-gray-600 bg-gray-800 text-gray-300 hover:bg-gray-700' : 'border-gray-300 bg-white text-gray-600 hover:bg-gray-50')}>
+        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" /></svg>
+        {currentLocale.nativeName}
+        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" /></svg>
+      </button>
+      {open && (
+        <>
+          <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
+          <div className="absolute right-0 top-full mt-1 bg-white rounded-xl shadow-xl border border-gray-200 py-1 z-50 min-w-[160px] max-h-[300px] overflow-y-auto">
+            {LOCALES.map(l => (
+              <button key={l.code} onClick={() => { setLocale(l.code); setOpen(false); }} className={'w-full text-left px-4 py-2 text-sm hover:bg-gray-50 transition-colors ' + (l.code === locale ? 'font-semibold text-yellow-700 bg-yellow-50' : 'text-gray-700')}>
+                <span className="mr-2">{l.code.toUpperCase()}</span>{l.nativeName}
+              </button>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
 export default function Home() {
-  const [locale, setLocale] = useState<Locale>('en');
+  const [locale, setLocale] = useState<Locale>('it');
   const [mode, setMode] = useState<'loading' | 'admin' | 'customer' | 'completed'>('loading');
   const [token, setToken] = useState('');
   const [contracts, setContracts] = useState<AdminContract[]>([]);
-  
+  const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState<string>('all');
   const [showCreate, setShowCreate] = useState(false);
   const [createForm, setCreateForm] = useState({ contractNumber: '', customerName: '', customerEmail: '', customerPhone: '', vehiclePlate: '', vehicleModel: '', vehicleColor: '' });
   const [uploading, setUploading] = useState(false);
@@ -30,11 +109,12 @@ export default function Home() {
   const [generatedToken, setGeneratedToken] = useState<{ token: string; expiresAt: string; link: string } | null>(null);
   const [copied, setCopied] = useState('');
   
+  // Delete & Selection states
   const [selectedContracts, setSelectedContracts] = useState<Set<string>>(new Set());
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
   const [deleteAllConfirm, setDeleteAllConfirm] = useState(false);
 
-  const [contract, setContract] = useState<any>(null);
+  const [contract, setContract] = useState<ValidatedContract | null>(null);
   const [checklist, setChecklist] = useState<ChecklistItem[]>([]);
   const [photoCounts, setPhotoCounts] = useState<Record<string, number>>({});
   const [localPreviews, setLocalPreviews] = useState<Record<string, string[]>>({});
@@ -43,18 +123,16 @@ export default function Home() {
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const objectUrlsRef = useRef<string[]>([]);
+
+  useEffect(() => {
+    return () => { objectUrlsRef.current.forEach(url => URL.revokeObjectURL(url)); };
+  }, []);
 
   useEffect(() => {
     const hash = window.location.hash;
-    if (hash.startsWith('#token=')) { 
-      const tk = hash.replace('#token=', ''); 
-      setToken(tk); 
-      setMode('customer'); 
-      validateToken(tk); 
-    } else { 
-      setMode('admin'); 
-      loadContracts(); 
-    }
+    if (hash.startsWith('#token=')) { const tk = hash.replace('#token=', ''); setToken(tk); setMode('customer'); validateToken(tk); }
+    else { setMode('admin'); loadContracts(); }
   }, []);
 
   const validateToken = async (tk: string) => {
@@ -62,28 +140,20 @@ export default function Home() {
       setError('');
       const res = await fetch('/api/token/validate', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token: tk }) });
       const data = await res.json();
-      if (!res.ok) { 
-        setError(data.error || 'Invalid token'); 
-        if (res.status === 410) setMode('completed'); 
-        return; 
-      }
-      setContract(data.contract); 
-      setChecklist(data.photoChecklist);
+      if (!res.ok) { setError(data.error || 'Invalid token'); if (res.status === 410) setMode('completed'); return; }
+      setContract(data.contract); setChecklist(data.photoChecklist);
       const counts: Record<string, number> = {};
       data.photoChecklist.forEach((item: ChecklistItem) => { counts[item.key] = item.photoCount; });
       setPhotoCounts(counts);
-    } catch { 
-      setError(t(locale, 'landing.connectionError')); 
-    }
+    } catch { setError(t(locale, 'landing.connectionError')); }
   };
 
   const openCamera = (key: string) => {
     const count = photoCounts[key] || 0;
-    if (count >= MAX_PHOTOS) { setError('Maximum ' + MAX_PHOTOS + ' photos for this angle.'); return; }
+    if (count >= MAX_PHOTOS) { setError('Massimo ' + MAX_PHOTOS + ' foto per questo angolo.'); return; }
     const item = checklist.find(c => c.key === key);
     if (!item) return;
-    setActiveKey(key); 
-    setError('');
+    setActiveKey(key); setError('');
     if (fileInputRef.current) fileInputRef.current.value = '';
     setTimeout(() => fileInputRef.current?.click(), 150);
   };
@@ -95,25 +165,21 @@ export default function Home() {
     if (!item) return;
     const remaining = MAX_PHOTOS - (photoCounts[activeKey] || 0);
     const toUpload = Array.from(files).slice(0, remaining);
-    
     for (const file of toUpload) {
       setUploadingPhoto(activeKey);
       try {
         const fd = new FormData();
-        fd.append('token', token); 
-        fd.append('photo', file); 
-        fd.append('requirementId', item.id);
+        fd.append('token', token); fd.append('photo', file); fd.append('requirementId', item.id);
         const res = await fetch('/api/photos/upload', { method: 'POST', body: fd });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || 'Upload failed');
-        setLocalPreviews(p => ({ ...p, [activeKey]: [...(p[activeKey] || []), URL.createObjectURL(file)] }));
-        setPhotoCounts(p => ({ ...p, [activeKey]: (p[activeKey] || 0) + 1 }));
+        const objectUrl = URL.createObjectURL(file);
+        objectUrlsRef.current.push(objectUrl);
+        setLocalPreviews(p => ({ ...p, [activeKey!]: [...(p[activeKey!] || []), objectUrl] }));
+        setPhotoCounts(p => ({ ...p, [activeKey!]: (p[activeKey!] || 0) + 1 }));
         setChecklist(p => p.map(c => c.key === activeKey ? { ...c, completed: true, photoCount: c.photoCount + 1 } : c));
-      } catch (err: unknown) { 
-        setError(err instanceof Error ? err.message : 'Upload failed'); 
-      } finally { 
-        setUploadingPhoto(null); 
-      }
+      } catch (err: unknown) { setError(err instanceof Error ? err.message : 'Upload failed'); }
+      finally { setUploadingPhoto(null); }
     }
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
@@ -122,80 +188,60 @@ export default function Home() {
 
   const handleSubmit = async () => {
     if (totalPhotos === 0 || isSubmitting) return;
-    setIsSubmitting(true); 
-    setError('');
+    setIsSubmitting(true); setError('');
     try {
       const res = await fetch('/api/submit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token }) });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Submit failed');
       setMode('completed');
-    } catch (err: unknown) { 
-      setError(err instanceof Error ? err.message : 'Submit failed'); 
-    } finally { 
-      setIsSubmitting(false); 
-    }
+    } catch (err: unknown) { setError(err instanceof Error ? err.message : 'Submit failed'); }
+    finally { setIsSubmitting(false); }
   };
 
-  const loadContracts = async () => { 
-    try { 
-      const r = await fetch('/api/admin/contracts'); 
-      if (r.ok) setContracts((await r.json()).contracts || []); 
-    } catch {} 
-  };
+  const loadContracts = async () => { try { const r = await fetch('/api/admin/contracts'); if (r.ok) setContracts((await r.json()).contracts || []); } catch {} };
 
   const handleCreateContract = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
       const r = await fetch('/api/admin/contracts', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(createForm) });
-      const d = await r.json(); 
-      if (!r.ok) throw new Error(d.error);
-      setShowCreate(false); 
-      setCreateForm({ contractNumber: '', customerName: '', customerEmail: '', customerPhone: '', vehiclePlate: '', vehicleModel: '', vehicleColor: '' });
-      if (d.accessToken) setGeneratedToken(d.accessToken); 
-      loadContracts();
-    } catch (err: unknown) { 
-      alert(err instanceof Error ? err.message : 'Failed'); 
-    }
+      const d = await r.json(); if (!r.ok) throw new Error(d.error);
+      setShowCreate(false); setCreateForm({ contractNumber: '', customerName: '', customerEmail: '', customerPhone: '', vehiclePlate: '', vehicleModel: '', vehicleColor: '' });
+      if (d.accessToken) setGeneratedToken(d.accessToken); loadContracts();
+    } catch (err: unknown) { alert(err instanceof Error ? err.message : 'Failed'); }
   };
 
   const handleGenerateToken = async (cid: string) => {
-    try { 
-      const r = await fetch('/api/admin/tokens', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ contractId: cid }) }); 
-      const d = await r.json(); 
-      if (!r.ok) throw new Error(d.error); 
-      setGeneratedToken(d.accessToken); 
-    } catch (err: unknown) { 
-      alert(err instanceof Error ? err.message : 'Failed'); 
-    }
+    try { const r = await fetch('/api/admin/tokens', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ contractId: cid }) }); const d = await r.json(); if (!r.ok) throw new Error(d.error); setGeneratedToken(d.accessToken); }
+    catch (err: unknown) { alert(err instanceof Error ? err.message : 'Failed'); }
   };
 
   const handleBulkUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]; 
-    if (!file) return; 
-    setUploading(true); 
-    setBulkResult(null);
-    try { 
-      const fd = new FormData(); 
-      fd.append('file', file); 
-      const r = await fetch('/api/admin/bulk-upload', { method: 'POST', body: fd }); 
-      const d = await r.json(); 
-      if (!r.ok) throw new Error(d.error); 
-      setBulkResult(d); 
-      loadContracts(); 
-    } catch (err: unknown) { 
-      alert(err instanceof Error ? err.message : 'Failed'); 
-    } finally { 
-      setUploading(false); 
-      if (e.target) e.target.value = ''; 
+    const file = e.target.files?.[0]; if (!file) return; setUploading(true); setBulkResult(null);
+    try { const fd = new FormData(); fd.append('file', file); const r = await fetch('/api/admin/bulk-upload', { method: 'POST', body: fd }); const d = await r.json(); if (!r.ok) throw new Error(d.error); setBulkResult(d); loadContracts(); }
+    catch (err: unknown) { alert(err instanceof Error ? err.message : 'Failed'); }
+    finally { setUploading(false); if (e.target) e.target.value = ''; }
+  };
+
+  const copyToClip = (text: string, id: string) => { navigator.clipboard.writeText(text); setCopied(id); setTimeout(() => setCopied(''), 2000); };
+  const statusBadge = (s: string) => s === 'completed' ? 'bg-green-100 text-green-800' : s === 'in_progress' ? 'bg-yellow-100 text-yellow-800' : 'bg-gray-100 text-gray-600';
+
+  const filteredContracts = useCallback(() => {
+    let result = contracts;
+    if (statusFilter !== 'all') result = result.filter(c => c.status === statusFilter);
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase().trim();
+      result = result.filter(c =>
+        c.contractNumber.toLowerCase().includes(q) ||
+        c.customerName.toLowerCase().includes(q) ||
+        c.vehiclePlate.toLowerCase().includes(q) ||
+        c.vehicleModel.toLowerCase().includes(q) ||
+        (c.customerEmail && c.customerEmail.toLowerCase().includes(q))
+      );
     }
-  };
+    return result;
+  }, [contracts, searchQuery, statusFilter]);
 
-  const copyToClip = (text: string, id: string) => { 
-    navigator.clipboard.writeText(text); 
-    setCopied(id); 
-    setTimeout(() => setCopied(''), 2000); 
-  };
-
+  // --- DELETE FUNCTIONALITY ---
   const handleDeleteContract = async (id: string) => {
     try {
       const r = await fetch('/api/admin/contracts?id=' + id, { method: 'DELETE' });
@@ -204,15 +250,9 @@ export default function Home() {
         throw new Error(errData.error || 'Delete failed');
       }
       setDeleteConfirm(null);
-      setSelectedContracts(prev => {
-        const next = new Set(prev);
-        next.delete(id);
-        return next;
-      });
+      setSelectedContracts(prev => { const next = new Set(prev); next.delete(id); return next; });
       loadContracts();
-    } catch (err: unknown) {
-      alert(err instanceof Error ? err.message : 'Failed to delete');
-    }
+    } catch (err: unknown) { alert(err instanceof Error ? err.message : 'Failed to delete'); }
   };
 
   const handleDeleteSelected = async () => {
@@ -229,153 +269,135 @@ export default function Home() {
       setSelectedContracts(new Set());
       setDeleteAllConfirm(false);
       loadContracts();
-    } catch (err: unknown) {
-      alert(err instanceof Error ? err.message : 'Failed to delete');
-    }
+    } catch (err: unknown) { alert(err instanceof Error ? err.message : 'Failed to delete'); }
   };
 
   const toggleSelectAll = () => {
-    if (selectedContracts.size === contracts.length && contracts.length > 0) {
-      setSelectedContracts(new Set());
-    } else {
-      setSelectedContracts(new Set(contracts.map(c => c.id)));
-    }
+    const filtered = filteredContracts();
+    if (selectedContracts.size === filtered.length && filtered.length > 0) setSelectedContracts(new Set());
+    else setSelectedContracts(new Set(filtered.map(c => c.id)));
   };
 
   const toggleSelect = (id: string) => {
-    setSelectedContracts(prev => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
+    setSelectedContracts(prev => { const next = new Set(prev); if (next.has(id)) next.delete(id); else next.add(id); return next; });
   };
 
-  if (mode === 'loading') return <div className="min-h-screen flex items-center justify-center bg-gray-50"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-yellow-400"></div></div>;
+  if (mode === 'loading') return (<div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: '#1a1a1a' }}><div className="animate-spin h-10 w-10 border-4 border-yellow-400 border-t-transparent rounded-full" /></div>);
 
   if (mode === 'completed') return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 p-6 text-center">
-      <div className="bg-white rounded-2xl p-8 shadow-lg max-w-md w-full">
-        <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-          <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"/></svg>
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-50 to-emerald-100 p-4">
+      <div className="bg-white rounded-2xl shadow-xl p-8 max-w-md w-full text-center">
+        <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
+          <svg className="w-10 h-10 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 13l4 4L19 7" /></svg>
         </div>
-        <h1 className="text-2xl font-bold text-gray-800 mb-2">{t(locale, 'confirm.title')}</h1>
-        <p className="text-gray-600 mb-6">{t(locale, 'confirm.subtitle')}</p>
-        <p className="text-sm text-gray-500 font-medium">{t(locale, 'confirm.thanks')}</p>
+        <h1 className="text-2xl font-bold text-gray-900 mb-2">{t(locale, 'confirm.title')}</h1>
+        <p className="text-gray-600">{t(locale, 'confirm.subtitle')}</p>
+        <div className="mt-8 p-4 bg-gray-50 rounded-xl"> <p className="text-gray-500 text-xs">{t(locale, 'confirm.thanksHertz')}</p> </div>
       </div>
     </div>
   );
 
   if (mode === 'customer') return (
-    <div className="min-h-screen bg-gray-50 p-4 pb-24">
-      <div className="max-w-md mx-auto">
-        <div className="flex items-center justify-between mb-6">
-          <h1 className="text-xl font-bold text-gray-800">HERTZ MALTA</h1>
-          <select value={locale} onChange={(e) => setLocale(e.target.value as Locale)} className="text-xs border border-gray-300 rounded-lg px-2 py-1.5 bg-white shadow-sm">
-            {LOCALES.map(l => <option key={l.code} value={l.code}>{l.nativeName}</option>)}
-          </select>
-        </div>
-        
-        {error && (
-          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-4 flex items-center justify-between">
-            <span>{error}</span>
-            <button onClick={() => setError('')} className="font-bold text-red-400 ml-2">x</button>
-          </div>
-        )}
-
-        {contract && (
-          <div className="bg-white rounded-xl p-4 shadow-sm mb-6 border border-gray-100">
-            <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">{t(locale, 'confirm.contract')}</p>
-            <p className="font-semibold text-gray-800">{contract.contractNumber}</p>
-            <div className="grid grid-cols-2 gap-4 mt-3 pt-3 border-t border-gray-100">
-              <div><p className="text-xs text-gray-500">{t(locale, 'checklist.customer')}</p><p className="font-medium text-sm">{contract.customerName}</p></div>
-              <div><p className="text-xs text-gray-500">{t(locale, 'checklist.vehicle')}</p><p className="font-medium text-sm">{contract.vehicleModel}</p></div>
-              <div><p className="text-xs text-gray-500">{t(locale, 'checklist.plate')}</p><p className="font-medium text-sm">{contract.vehiclePlate}</p></div>
-              {contract.vehicleColor && <div><p className="text-xs text-gray-500">{t(locale, 'checklist.color')}</p><p className="font-medium text-sm">{contract.vehicleColor}</p></div>}
+    <div className="min-h-screen bg-gray-50">
+      <input ref={fileInputRef} type="file" accept="image/*" capture="environment" onChange={handleFileChange} className="hidden" />
+      <div style={{ backgroundColor: '#1a1a1a' }}>
+        <div className="max-w-lg mx-auto px-4 py-4">
+          <div className="flex items-center justify-between">
+            <div><h1 className="text-lg font-bold text-white">HERTZ MALTA</h1><p className="text-xs" style={{ color: '#FFCB05' }}>{t(locale, 'app.title')}</p></div>
+            <div className="flex items-center gap-2">
+              <LanguageSelector locale={locale} setLocale={setLocale} dark />
+              {contract && <div className="text-right"><p className="text-xs text-gray-400">{t(locale, 'confirm.contract')}</p><p className="text-sm font-semibold text-white">{contract.contractNumber}</p></div>}
             </div>
           </div>
-        )}
-
-        <input ref={fileInputRef} type="file" accept="image/*" multiple capture="environment" className="hidden" onChange={handleFileChange} />
-        
-        <div className="space-y-3">
+          {contract && (
+            <div className="mt-3 p-3 rounded-xl grid grid-cols-2 gap-2 text-sm" style={{ backgroundColor: 'rgba(255,203,5,0.1)', border: '1px solid rgba(255,203,5,0.2)' }}>
+              <div><span className="text-xs" style={{ color: '#FFCB05' }}>{t(locale, 'checklist.customer')}</span><p className="font-medium text-white">{contract.customerName}</p></div>
+              <div><span className="text-xs" style={{ color: '#FFCB05' }}>{t(locale, 'checklist.vehicle')}</span><p className="font-medium text-white">{contract.vehicleModel}</p></div>
+              <div><span className="text-xs" style={{ color: '#FFCB05' }}>{t(locale, 'checklist.plate')}</span><p className="font-medium text-white">{contract.vehiclePlate}</p></div>
+              {contract.vehicleColor && <div><span className="text-xs" style={{ color: '#FFCB05' }}>{t(locale, 'checklist.color')}</span><p className="font-medium text-white">{contract.vehicleColor}</p></div>}
+            </div>
+          )}
+        </div>
+      </div>
+      <div className="max-w-lg mx-auto px-4 py-6 space-y-5">
+        {error && <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl text-sm flex items-start gap-2"><span>!</span><span className="flex-1">{error}</span><button onClick={() => setError('')} className="font-bold text-red-400 ml-2">x</button></div>}
+        <div className="bg-white rounded-2xl shadow-sm p-4 border border-gray-100">
+          <CarDiagram onSelect={openCamera} photoCounts={photoCounts} />
+        </div>
+        <div className="space-y-2">
           {checklist.map(item => {
             const count = photoCounts[item.key] || 0;
             const full = count >= MAX_PHOTOS;
             const isUploading = uploadingPhoto === item.key;
             const previews = localPreviews[item.key] || [];
+            const translatedLabel = t(locale, 'photo.' + item.key) !== 'photo.' + item.key ? t(locale, 'photo.' + item.key) : item.label;
             return (
-              <div key={item.id} onClick={() => !full && openCamera(item.key)} className={'bg-white rounded-xl p-4 border-2 cursor-pointer transition-all active:scale-[0.98] ' + (full ? 'border-green-300 bg-green-50/60' : count > 0 ? 'border-yellow-300 bg-yellow-50/60' : 'border-gray-200 hover:border-yellow-300')}>
-                <div className="flex items-center justify-between mb-2">
-                  <span className="font-semibold text-gray-800">{item.label}</span>
-                  <span className={`text-xs font-bold px-2 py-1 rounded-full ${full ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-500'}`}>
-                    {isUploading ? t(locale, 'checklist.uploading') : full ? '✓' : `${count}/${MAX_PHOTOS}`}
-                  </span>
+              <div key={item.id} onClick={() => !full && openCamera(item.key)} className={'bg-white rounded-xl p-3 border-2 cursor-pointer transition-all active:scale-[0.98] ' + (full ? 'border-red-200 bg-red-50/60' : count > 0 ? 'border-green-300 bg-green-50/60' : 'border-gray-200 hover:border-yellow-300')}>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className={'w-9 h-9 rounded-full flex items-center justify-center text-sm ' + (full ? 'bg-red-100' : count > 0 ? 'bg-green-100' : 'bg-gray-100')}>
+                      {isUploading ? <div className="animate-spin h-4 w-4 border-2 border-yellow-500 border-t-transparent rounded-full" /> : full ? '🔝' : count > 0 ? '✓' : '📷'}
+                    </div>
+                    <div><p className="font-semibold text-gray-800 text-sm">{translatedLabel}</p><p className="text-xs text-gray-500">{count}/{MAX_PHOTOS} foto</p></div>
+                  </div>
+                  <div className={'px-2.5 py-1 rounded-full text-xs font-medium ' + (full ? 'bg-red-100 text-red-700' : isUploading ? 'bg-yellow-100 text-yellow-800' : count > 0 ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-500')}>
+                    {full ? t(locale, 'checklist.retake') : isUploading ? t(locale, 'checklist.uploading') : count > 0 ? t(locale, 'checklist.retake') : t(locale, 'checklist.takePhoto')}
+                  </div>
                 </div>
                 {previews.length > 0 && (
-                  <div className="flex gap-2 overflow-x-auto pb-2 mt-2">
-                    {previews.map((src, i) => <img key={i} src={src} alt="" className="w-16 h-16 rounded-lg object-cover border border-gray-200 flex-shrink-0" />)}
-                    {!full && (
-                      <div onClick={(e) => { e.stopPropagation(); openCamera(item.key); }} className="w-16 h-16 rounded-lg bg-gray-50 border-2 border-dashed border-gray-300 flex items-center justify-center flex-shrink-0 cursor-pointer hover:bg-gray-100 text-gray-400 text-2xl">+</div>
-                    )}
+                  <div className="flex gap-1.5 mt-2 overflow-x-auto pb-1">
+                    {previews.map((src, i) => <img key={i} src={src} alt="" className="w-14 h-14 rounded-lg object-cover flex-shrink-0 border border-gray-300" />)}
+                    {!full && <div onClick={e => { e.stopPropagation(); openCamera(item.key); }} className="w-14 h-14 rounded-lg bg-yellow-50 border-2 border-dashed border-yellow-400 flex items-center justify-center flex-shrink-0 cursor-pointer hover:bg-yellow-100"><span className="text-yellow-500 text-lg font-bold">+</span></div>}
                   </div>
                 )}
               </div>
             );
           })}
         </div>
-
-        <div className="fixed bottom-0 left-0 right-0 p-4 bg-white border-t border-gray-200 shadow-lg">
-          <div className="max-w-md mx-auto">
-            {totalPhotos > 0 ? (
-              <button onClick={handleSubmit} disabled={isSubmitting} className="w-full py-3.5 rounded-xl text-white font-bold text-lg shadow-lg transition-all active:scale-[0.98]" style={{ backgroundColor: isSubmitting ? '#999' : '#1a1a1a' }}>
-                {isSubmitting ? t(locale, 'checklist.submitting') : `${t(locale, 'checklist.submitCheckin')} (${totalPhotos})`}
-              </button>
-            ) : (
-              <div className="text-center text-sm text-gray-500">{t(locale, 'checklist.completeAll')}</div>
-            )}
-          </div>
-        </div>
+        {totalPhotos > 0 && (
+          <button onClick={handleSubmit} disabled={isSubmitting} className="w-full py-5 rounded-2xl text-white font-extrabold text-lg tracking-wide transition-all shadow-lg shadow-green-200 hover:shadow-xl active:scale-[0.98]" style={{ backgroundColor: isSubmitting ? '#9ca3af' : '#16a34a' }}>
+            {isSubmitting ? <span className="flex items-center justify-center gap-2"><span className="animate-spin h-5 w-5 border-2 border-white border-t-transparent rounded-full" />{t(locale, 'checklist.submitting')}</span> : <span>{t(locale, 'checklist.submitCheckin')}<span className="block text-sm font-normal opacity-80 mt-0.5">{totalPhotos} foto pronte</span></span>}
+          </button>
+        )}
+        {totalPhotos === 0 && <p className="text-center text-xs text-gray-400">{t(locale, 'checklist.completeAll')}</p>}
       </div>
+      <div className="h-10" />
     </div>
   );
 
-  /* ADMIN VIEW */
+  /* ADMIN */
   return (
-    <div className="min-h-screen bg-gray-50 p-4 md:p-8">
-      <div className="max-w-6xl mx-auto">
-        <div className="flex items-center justify-between mb-8">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-800">HERTZ MALTA</h1>
-            <p className="text-gray-500 text-sm">{t(locale, 'admin.subtitle')}</p>
-          </div>
-          <select value={locale} onChange={(e) => setLocale(e.target.value as Locale)} className="text-sm border border-gray-300 rounded-lg px-3 py-2 bg-white shadow-sm">
-            {LOCALES.map(l => <option key={l.code} value={l.code}>{l.nativeName}</option>)}
-          </select>
+    <div className="min-h-screen" style={{ backgroundColor: '#f5f5f0' }}>
+      <div className="fixed top-3 right-3 z-50">
+        <LanguageSelector locale={locale} setLocale={setLocale} />
+      </div>
+      <div className="px-6 py-5" style={{ backgroundColor: '#1a1a1a' }}>
+        <div className="max-w-6xl mx-auto flex items-center gap-3">
+          <div className="w-10 h-10 rounded-lg flex items-center justify-center font-black text-lg" style={{ backgroundColor: '#FFCB05', color: '#1a1a1a' }}>H</div>
+          <div> <h1 className="text-xl font-bold text-white tracking-wide">HERTZ MALTA</h1> <p className="text-xs text-gray-400">{t(locale, 'admin.subtitle')}</p> </div>
         </div>
-
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+      </div>
+      <div className="max-w-6xl mx-auto px-4 py-6">
+        <div className="grid grid-cols-4 gap-3 mb-6">
           {[
             { label: t(locale, 'admin.totalContracts'), value: contracts.length, bg: '#fff', bc: '#e5e5e5', c: '#1a1a1a' },
             { label: t(locale, 'admin.pending'), value: contracts.filter(c => c.status === 'pending').length, bg: '#fff', bc: '#e5e5e5', c: '#666' },
             { label: t(locale, 'admin.inProgress'), value: contracts.filter(c => c.status === 'in_progress').length, bg: '#FFCB05', bc: '#e6b800', c: '#1a1a1a' },
             { label: t(locale, 'admin.completed'), value: contracts.filter(c => c.status === 'completed').length, bg: '#22c55e', bc: '#16a34a', c: '#fff' },
           ].map(s => (
-            <div key={s.label} className="rounded-xl p-4 shadow-sm border" style={{ backgroundColor: s.bg, borderColor: s.bc, color: s.c }}>
-              <div className="text-3xl font-bold mb-1">{s.value}</div>
-              <div className="text-xs font-medium uppercase tracking-wider opacity-80">{s.label}</div>
+            <div key={s.label} className="rounded-xl p-4 shadow-sm" style={{ backgroundColor: s.bg, border: '1px solid ' + s.bc }}>
+              <p className="text-2xl font-bold" style={{ color: s.c }}>{s.value}</p>
+              <p className="text-xs mt-1" style={{ color: s.c, opacity: 0.7 }}>{s.label}</p>
             </div>
           ))}
         </div>
-
         <div className="flex flex-wrap gap-3 mb-6">
-          <button onClick={() => setShowCreate(true)} className="text-sm font-medium px-4 py-2 rounded-lg text-white shadow-sm" style={{ backgroundColor: '#1a1a1a' }}>+ {t(locale, 'admin.newContract')}</button>
-          <label className="text-sm font-medium px-4 py-2 rounded-lg bg-white border border-gray-300 text-gray-700 cursor-pointer shadow-sm hover:bg-gray-50">
+          <button onClick={() => setShowCreate(true)} className="text-sm font-medium px-4 py-2 rounded-lg text-white" style={{ backgroundColor: '#1a1a1a' }}>+ {t(locale, 'admin.newContract')}</button>
+          <label className="cursor-pointer text-sm font-medium px-4 py-2 rounded-lg border bg-white flex items-center gap-2" style={{ borderColor: '#ccc', color: '#333' }}>
             {uploading ? t(locale, 'admin.processing') : t(locale, 'admin.bulkUpload')}
-            <input type="file" accept=".xlsx,.xls,.csv" className="hidden" onChange={handleBulkUpload} />
+            <input type="file" accept=".xlsx,.xls,.csv" onChange={handleBulkUpload} className="hidden" disabled={uploading} />
           </label>
-          <button onClick={loadContracts} className="text-sm font-medium px-4 py-2 rounded-lg bg-white border border-gray-300 text-gray-700 shadow-sm hover:bg-gray-50">{t(locale, 'admin.refresh')}</button>
-          
+          <button onClick={loadContracts} className="text-sm font-medium px-4 py-2 rounded-lg border bg-white" style={{ borderColor: '#ccc', color: '#333' }}>{t(locale, 'admin.refresh')}</button>
           {selectedContracts.size > 0 && (
             <button onClick={() => setDeleteAllConfirm(true)} className="text-sm font-medium px-4 py-2 rounded-lg bg-red-600 text-white shadow-sm hover:bg-red-700 ml-auto">
               {t(locale, 'admin.deleteSelected')} ({selectedContracts.size})
@@ -383,144 +405,153 @@ export default function Home() {
           )}
         </div>
 
+        <div className="flex flex-col sm:flex-row gap-3 mb-6">
+          <div className="relative flex-1">
+            <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+            <input
+              type="text"
+              placeholder={t(locale, 'admin.searchPlaceholder')}
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              className="w-full pl-10 pr-4 py-2.5 rounded-lg border bg-white text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-transparent"
+              style={{ borderColor: '#ccc' }}
+            />
+            {searchQuery && (
+              <button onClick={() => setSearchQuery('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
+              </button>
+            )}
+          </div>
+          <select
+            value={statusFilter}
+            onChange={e => setStatusFilter(e.target.value)}
+            className="px-4 py-2.5 rounded-lg border bg-white text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400"
+            style={{ borderColor: '#ccc' }}
+          >
+            <option value="all">{t(locale, 'admin.allStatuses')}</option>
+            <option value="pending">Pending</option>
+            <option value="in_progress">In Progress</option>
+            <option value="completed">Completed</option>
+          </select>
+        </div>
+
         {bulkResult && (
-          <div className="bg-green-50 border border-green-200 rounded-xl p-4 mb-6">
-            <h3 className="font-semibold text-green-800 mb-2">{t(locale, 'admin.uploadSuccess')}</h3>
-            <p className="text-sm text-green-700 mb-3">
-              {bulkResult.summary.created} {t(locale, 'admin.created')}, {bulkResult.summary.skipped} {t(locale, 'admin.skipped')}, {bulkResult.summary.errors} {t(locale, 'admin.errors')}
-            </p>
-            <button onClick={() => setBulkResult(null)} className="text-xs text-green-600 underline">{t(locale, 'admin.close')}</button>
+          <div className="bg-white rounded-xl p-4 border mb-6" style={{ borderColor: '#e5e5e5' }}>
+            <h3 className="font-semibold text-gray-800 mb-2">{t(locale, 'admin.uploadSuccess')}</h3>
+            <p className="text-sm text-gray-600">{bulkResult.summary.created} {t(locale, 'admin.created')}, {bulkResult.summary.skipped} {t(locale, 'admin.skipped')}, {bulkResult.summary.errors} {t(locale, 'admin.errors')}</p>
+            <details className="mt-2"><summary className="text-xs text-gray-500 cursor-pointer">{t(locale, 'admin.results')}</summary>
+              <div className="mt-2 max-h-40 overflow-y-auto text-xs space-y-1">
+                {bulkResult.results?.map((r: any, i: number) => <div key={i} className={r.status === 'error' ? 'text-red-600' : r.status === 'skipped' ? 'text-yellow-600' : 'text-green-600'}>Row {r.row}: {r.contractNumber} - {r.customerName} [{r.status}]{r.error && ' - ' + r.error}</div>)}
+              </div>
+            </details>
+            <button onClick={() => setBulkResult(null)} className="mt-2 text-xs text-gray-400">{t(locale, 'admin.close')}</button>
           </div>
         )}
 
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm text-left">
-              <thead className="bg-gray-50 text-gray-500 uppercase text-xs font-semibold">
-                <tr>
-                  <th className="px-4 py-3 w-10">
-                    <input type="checkbox" checked={selectedContracts.size === contracts.length && contracts.length > 0} onChange={toggleSelectAll} className="rounded border-gray-300" />
-                  </th>
-                  {['Contract', 'Client', 'Vehicle', 'Status', 'Photos', 'Tokens', 'Actions'].map(h => (
-                    <th key={h} className="px-4 py-3">{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
-                {contracts.length === 0 ? (
-                  <tr><td colSpan={8} className="px-4 py-8 text-center text-gray-500">{t(locale, 'admin.noContracts')}</td></tr>
-                ) : (
-                  contracts.map(c => (
-                    <tr key={c.id} className="hover:bg-gray-50/50">
-                      <td className="px-4 py-3">
-                        <input type="checkbox" checked={selectedContracts.has(c.id)} onChange={() => toggleSelect(c.id)} className="rounded border-gray-300" />
-                      </td>
-                      <td className="px-4 py-3 font-medium text-gray-900">{c.contractNumber}</td>
-                      <td className="px-4 py-3">
-                        <div className="font-medium text-gray-900">{c.customerName}</div>
-                        {c.customerEmail && <div className="text-xs text-gray-500">{c.customerEmail}</div>}
-                      </td>
-                      <td className="px-4 py-3">
-                        <div className="font-medium text-gray-900">{c.vehicleModel}</div>
-                        <div className="text-xs text-gray-500">{c.vehiclePlate}</div>
-                      </td>
-                      <td className="px-4 py-3">
-                        <span className={`inline-flex px-2 py-1 rounded-full text-xs font-medium ${c.status === 'completed' ? 'bg-green-100 text-green-800' : c.status === 'in_progress' ? 'bg-yellow-100 text-yellow-800' : 'bg-gray-100 text-gray-600'}`}>
-                          {c.status}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-center">{c.photosSubmitted}</td>
-                      <td className="px-4 py-3">
-                        {c.tokens.map(tk => {
-                          const link = window.location.origin + '/#token=' + tk.token;
-                          const statusText = tk.usedAt ? t(locale, 'admin.tokenUsed') : tk.isExpired ? t(locale, 'admin.tokenExpired') : t(locale, 'admin.tokenActive');
-                          return (
-                            <div key={tk.id} className="flex items-center gap-2 mb-1.5">
-                              <span className="text-xs font-mono bg-gray-100 px-1.5 py-0.5 rounded text-gray-600">{tk.token.substring(0, 8)}...</span>
-                              <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${tk.usedAt ? 'bg-gray-200 text-gray-700' : tk.isExpired ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
-                                {statusText}
-                              </span>
-                              <button onClick={() => copyToClip(link, tk.id)} className="text-xs px-2 py-0.5 rounded font-medium transition-colors" style={{ backgroundColor: copied === tk.id ? '#22c55e' : '#FFCB05', color: copied === tk.id ? '#fff' : '#1a1a1a' }}>
-                                {copied === tk.id ? 'OK' : t(locale, 'admin.copy')}
-                              </button>
-                            </div>
-                          );
-                        })}
-                        {c.tokens.length === 0 && <span className="text-xs text-gray-400">{t(locale, 'admin.noTokens')}</span>}
-                      </td>
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-1.5">
-                          <button onClick={() => { setTokenDialog({ contractId: c.id, contractNumber: c.contractNumber }); setGeneratedToken(null); }} className="text-xs font-medium px-2.5 py-1.5 rounded bg-gray-900 text-yellow-400 hover:bg-gray-800">+ Token</button>
-                          {deleteConfirm === c.id ? (
-                            <div className="flex items-center gap-1">
-                              <button onClick={() => handleDeleteContract(c.id)} className="text-xs font-medium px-2 py-1.5 rounded bg-red-600 text-white hover:bg-red-700">Yes</button>
-                              <button onClick={() => setDeleteConfirm(null)} className="text-xs font-medium px-2 py-1.5 rounded bg-gray-200 text-gray-700 hover:bg-gray-300">No</button>
-                            </div>
-                          ) : (
-                            <button onClick={() => setDeleteConfirm(c.id)} className="text-xs font-medium px-2.5 py-1.5 rounded bg-red-50 text-red-700 hover:bg-red-100 border border-red-200">{t(locale, 'admin.delete')}</button>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
-
         {showCreate && (
-          <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4" onClick={() => setShowCreate(false)}>
-            <div onClick={e => e.stopPropagation()} className="bg-white rounded-2xl p-6 shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto">
-              <h2 className="text-xl font-bold mb-2">{t(locale, 'admin.newContractTitle')}</h2>
-              <p className="text-sm text-gray-600 mb-4">{t(locale, 'admin.newContractDesc')}</p>
-              <form onSubmit={handleCreateContract} className="space-y-3">
-                {[
-                  { key: 'contractNumber', label: t(locale, 'admin.contractNumber'), required: true },
-                  { key: 'customerName', label: t(locale, 'admin.customerName'), required: true },
-                  { key: 'vehiclePlate', label: t(locale, 'admin.vehiclePlate'), required: false },
-                  { key: 'vehicleModel', label: t(locale, 'admin.vehicleModel'), required: false },
-                  { key: 'customerEmail', label: t(locale, 'admin.customerEmail'), required: false },
-                  { key: 'customerPhone', label: t(locale, 'admin.customerPhone'), required: false },
-                  { key: 'vehicleColor', label: t(locale, 'admin.vehicleColor'), required: false }
-                ].map(f => (
-                  <div key={f.key}>
-                    <label className="block text-xs font-medium text-gray-700 mb-1">{f.label}{f.required && '*'}</label>
-                    <input type="text" value={(createForm as any)[f.key]} onChange={e => setCreateForm(p => ({ ...p, [f.key]: e.target.value }))} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-yellow-400 focus:border-transparent outline-none" required={f.required} />
-                  </div>
+          <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-40 p-4" onClick={() => setShowCreate(false)}>
+            <form onSubmit={handleCreateContract} onClick={e => e.stopPropagation()} className="bg-white rounded-2xl p-6 shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto">
+              <h2 className="font-semibold text-gray-800 mb-1 text-lg">{t(locale, 'admin.newContractTitle')}</h2>
+              <p className="text-xs text-gray-500 mb-4">{t(locale, 'admin.newContractDesc')}</p>
+              <div className="space-y-3">
+                {[{ key: 'contractNumber', label: t(locale, 'admin.contractNumber'), required: true },{ key: 'customerName', label: t(locale, 'admin.customerName'), required: true },{ key: 'vehiclePlate', label: t(locale, 'admin.vehiclePlate') },{ key: 'vehicleModel', label: t(locale, 'admin.vehicleModel') },{ key: 'customerEmail', label: t(locale, 'admin.customerEmail') },{ key: 'customerPhone', label: t(locale, 'admin.customerPhone') },{ key: 'vehicleColor', label: t(locale, 'admin.vehicleColor') }].map(f => (
+                  <div key={f.key}><label className="block text-xs font-medium text-gray-600 mb-1">{f.label}{f.required && '*'}</label><input type="text" value={(createForm as any)[f.key]} onChange={e => setCreateForm(p => ({ ...p, [f.key]: e.target.value }))} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" required={f.required} /></div>
                 ))}
-                <div className="flex gap-3 pt-2">
-                  <button type="submit" className="flex-1 text-white py-2.5 rounded-lg text-sm font-medium" style={{ backgroundColor: '#1a1a1a' }}>{t(locale, 'admin.createAndGenerate')}</button>
-                  <button type="button" onClick={() => setShowCreate(false)} className="px-4 py-2.5 bg-gray-100 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-200">{t(locale, 'admin.close')}</button>
-                </div>
-              </form>
-            </div>
+              </div>
+              <div className="flex gap-2 mt-5">
+                <button type="submit" className="flex-1 text-white py-2.5 rounded-lg text-sm font-medium" style={{ backgroundColor: '#1a1a1a' }}>{t(locale, 'admin.createAndGenerate')}</button>
+                <button type="button" onClick={() => setShowCreate(false)} className="px-4 py-2.5 bg-gray-100 text-gray-700 rounded-lg text-sm">{t(locale, 'admin.close')}</button>
+              </div>
+            </form>
           </div>
         )}
 
         {(generatedToken || tokenDialog) && (
-          <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4" onClick={() => { setGeneratedToken(null); setTokenDialog(null); }}>
+          <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-40 p-4" onClick={() => { setGeneratedToken(null); setTokenDialog(null); }}>
             <div onClick={e => e.stopPropagation()} className="bg-white rounded-2xl p-6 shadow-xl max-w-md w-full">
-              {generatedToken ? (
-                <>
-                  <h2 className="text-xl font-bold mb-2">{t(locale, 'admin.linkGenerated')}</h2>
-                  <p className="text-sm text-gray-600 mb-4">{t(locale, 'admin.linkGeneratedDesc')}</p>
-                  <div className="bg-gray-50 p-3 rounded-lg break-all text-sm font-mono mb-4 border border-gray-200">{window.location.origin}{generatedToken.link}</div>
-                  <div className="flex gap-3">
-                    <button onClick={() => copyToClip(window.location.origin + generatedToken.link, 'dialog')} className="flex-1 text-white py-2.5 rounded-lg text-sm font-medium" style={{ backgroundColor: '#1a1a1a' }}>{copied === 'dialog' ? 'OK!' : t(locale, 'admin.copyLink')}</button>
-                    <button onClick={() => { setGeneratedToken(null); setTokenDialog(null); }} className="px-4 py-2.5 bg-gray-100 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-200">{t(locale, 'admin.close')}</button>
-                  </div>
-                </>
-              ) : tokenDialog ? (
-                <>
-                  <h2 className="text-xl font-bold mb-2">{t(locale, 'admin.generateToken')}</h2>
-                  <p className="text-sm text-gray-600 mb-4">{t(locale, 'admin.contractLabel')} <strong>{tokenDialog.contractNumber}</strong></p>
-                  <button onClick={() => handleGenerateToken(tokenDialog.contractId)} className="w-full text-white py-2.5 rounded-lg text-sm font-medium" style={{ backgroundColor: '#1a1a1a' }}>{t(locale, 'admin.generate')}</button>
-                </>
-              ) : null}
+              {generatedToken ? (<>
+                <h2 className="font-semibold text-gray-800 mb-1 text-lg">{t(locale, 'admin.linkGenerated')}</h2>
+                <div className="rounded-xl p-3 break-all text-sm font-mono mb-4" style={{ backgroundColor: '#f5f5f0' }}>{window.location.origin}{generatedToken.link}</div>
+                <div className="flex gap-2">
+                  <button onClick={() => copyToClip(window.location.origin + generatedToken.link, 'dialog')} className="flex-1 text-white py-2.5 rounded-lg text-sm font-medium" style={{ backgroundColor: '#1a1a1a' }}>{copied === 'dialog' ? t(locale, 'admin.copied') : t(locale, 'admin.copyLink')}</button>
+                  <button onClick={() => { setGeneratedToken(null); setTokenDialog(null); }} className="px-4 py-2.5 bg-gray-100 text-gray-700 rounded-lg text-sm">{t(locale, 'admin.close')}</button>
+                </div>
+              </>) : tokenDialog ? (<>
+                <h2 className="font-semibold text-gray-800 mb-4">{t(locale, 'admin.generateToken')}</h2>
+                <p className="text-sm text-gray-600 mb-4">{t(locale, 'admin.contractLabel')} <strong>{tokenDialog.contractNumber}</strong></p>
+                <button onClick={() => handleGenerateToken(tokenDialog.contractId)} className="w-full text-white py-2.5 rounded-lg text-sm font-medium" style={{ backgroundColor: '#1a1a1a' }}>{t(locale, 'admin.generate')}</button>
+              </>) : null}
             </div>
           </div>
         )}
+
+        <div className="bg-white rounded-xl shadow-sm overflow-hidden" style={{ border: '1px solid #e5e5e5' }}>
+          <div className="px-6 py-4 border-b" style={{ borderColor: '#e5e5e5', backgroundColor: '#fafaf5' }}>
+            <div className="flex items-center justify-between">
+              <h2 className="font-semibold text-gray-800">{t(locale, 'admin.contracts')}</h2>
+              {(searchQuery || statusFilter !== 'all') && (
+                <span className="text-xs text-gray-500">{filteredContracts().length} di {contracts.length} contratti</span>
+              )}
+            </div>
+          </div>
+          {filteredContracts().length === 0 ? (
+            <div className="p-8 text-center text-gray-400">
+              {contracts.length === 0 ? t(locale, 'admin.noContracts') : t(locale, 'admin.noSearchResults')}
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead><tr style={{ backgroundColor: '#1a1a1a' }}>
+                  <th className="px-4 py-3 w-10">
+                    <input type="checkbox" checked={selectedContracts.size === filteredContracts().length && filteredContracts().length > 0} onChange={toggleSelectAll} className="rounded border-gray-300" />
+                  </th>
+                  {['Contract','Client','Vehicle','Status','Photos','Tokens','Actions'].map(h => <th key={h} className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase">{h}</th>)}
+                </tr></thead>
+                <tbody className="divide-y" style={{ borderColor: '#f0f0f0' }}>
+                  {filteredContracts().map(c => (
+                    <tr key={c.id} className="hover:bg-gray-50">
+                      <td className="px-4 py-3">
+                        <input type="checkbox" checked={selectedContracts.has(c.id)} onChange={() => toggleSelect(c.id)} className="rounded border-gray-300" />
+                      </td>
+                      <td className="px-4 py-3 text-sm font-medium text-gray-800">{c.contractNumber}</td>
+                      <td className="px-4 py-3 text-sm text-gray-600"><div>{c.customerName}</div>{c.customerEmail && <div className="text-xs text-gray-400">{c.customerEmail}</div>}</td>
+                      <td className="px-4 py-3 text-sm text-gray-600"><div>{c.vehicleModel}</div><div className="text-xs text-gray-400">{c.vehiclePlate}</div></td>
+                      <td className="px-4 py-3"><span className={'inline-flex px-2 py-0.5 rounded-full text-xs font-medium ' + statusBadge(c.status)}>{c.status}</span></td>
+                      <td className="px-4 py-3 text-sm text-gray-600">{c.photosSubmitted}</td>
+                      <td className="px-4 py-3">
+                        <div className="space-y-1.5">
+                          {c.tokens.map(tk => {
+                            const link = window.location.origin + '/#token=' + tk.token;
+                            const statusText = tk.usedAt ? t(locale, 'admin.tokenUsed') : tk.isExpired ? t(locale, 'admin.tokenExpired') : t(locale, 'admin.tokenActive');
+                            return (<div key={tk.id} className="flex items-center gap-1.5">
+                              <span className={'w-1.5 h-1.5 rounded-full ' + (tk.usedAt ? 'bg-gray-300' : tk.isExpired ? 'bg-red-400' : 'bg-green-400')} />
+                              <span className="text-xs text-gray-500">{statusText}</span>
+                              <button onClick={() => copyToClip(link, tk.id)} className="text-xs px-1.5 py-0.5 rounded font-medium" style={{ backgroundColor: copied === tk.id ? '#22c55e' : '#FFCB05', color: copied === tk.id ? '#fff' : '#1a1a1a' }}>{copied === tk.id ? 'OK' : t(locale, 'admin.copy')}</button>
+                            </div>);
+                          })}
+                          {c.tokens.length === 0 && <span className="text-xs text-gray-400">{t(locale, 'admin.noTokens')}</span>}
+                        </div>
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-1.5">
+                          <button onClick={() => { setTokenDialog({ contractId: c.id, contractNumber: c.contractNumber }); setGeneratedToken(null); }} className="text-xs font-medium px-2 py-1 rounded" style={{ backgroundColor: '#1a1a1a', color: '#FFCB05' }}>+ Token</button>
+                          {deleteConfirm === c.id ? (
+                            <div className="flex items-center gap-1">
+                              <button onClick={() => handleDeleteContract(c.id)} className="text-xs font-medium px-2 py-1 rounded bg-red-600 text-white hover:bg-red-700">Yes</button>
+                              <button onClick={() => setDeleteConfirm(null)} className="text-xs font-medium px-2 py-1 rounded bg-gray-200 text-gray-700 hover:bg-gray-300">No</button>
+                            </div>
+                          ) : (
+                            <button onClick={() => setDeleteConfirm(c.id)} className="text-xs font-medium px-2 py-1 rounded bg-red-50 text-red-700 hover:bg-red-100 border border-red-200">{t(locale, 'admin.delete')}</button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
 
         {deleteAllConfirm && (
           <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4" onClick={() => setDeleteAllConfirm(false)}>
