@@ -116,6 +116,12 @@ export default function Home() {
   const [tokenDialog, setTokenDialog] = useState<{ contractId: string; contractNumber: string } | null>(null);
   const [generatedToken, setGeneratedToken] = useState<{ token: string; expiresAt: string; link: string } | null>(null);
   const [copied, setCopied] = useState('');
+  
+  // Delete & Selection states
+  const [selectedContracts, setSelectedContracts] = useState<Set<string>>(new Set());
+  const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
+  const [deleteAllConfirm, setDeleteAllConfirm] = useState(false);
+
   const [contract, setContract] = useState<ValidatedContract | null>(null);
   const [checklist, setChecklist] = useState<ChecklistItem[]>([]);
   const [photoCounts, setPhotoCounts] = useState<Record<string, number>>({});
@@ -247,6 +253,47 @@ export default function Home() {
     return result;
   }, [contracts, searchQuery, statusFilter]);
 
+  // --- DELETE FUNCTIONALITY ---
+  const handleDeleteContract = async (id: string) => {
+    try {
+      const r = await fetch('/api/admin/contracts?id=' + id, { method: 'DELETE' });
+      if (!r.ok) {
+        const errData = await r.json().catch(() => ({}));
+        throw new Error(errData.error || 'Delete failed');
+      }
+      setDeleteConfirm(null);
+      setSelectedContracts(prev => { const next = new Set(prev); next.delete(id); return next; });
+      loadContracts();
+    } catch (err: unknown) { alert(err instanceof Error ? err.message : 'Failed to delete'); }
+  };
+
+  const handleDeleteSelected = async () => {
+    if (selectedContracts.size === 0) return;
+    const ids = Array.from(selectedContracts);
+    try {
+      for (const id of ids) {
+        const r = await fetch('/api/admin/contracts?id=' + id, { method: 'DELETE' });
+        if (!r.ok) {
+          const errData = await r.json().catch(() => ({}));
+          throw new Error(errData.error || `Delete failed for ${id}`);
+        }
+      }
+      setSelectedContracts(new Set());
+      setDeleteAllConfirm(false);
+      loadContracts();
+    } catch (err: unknown) { alert(err instanceof Error ? err.message : 'Failed to delete'); }
+  };
+
+  const toggleSelectAll = () => {
+    const filtered = filteredContracts();
+    if (selectedContracts.size === filtered.length && filtered.length > 0) setSelectedContracts(new Set());
+    else setSelectedContracts(new Set(filtered.map(c => c.id)));
+  };
+
+  const toggleSelect = (id: string) => {
+    setSelectedContracts(prev => { const next = new Set(prev); if (next.has(id)) next.delete(id); else next.add(id); return next; });
+  };
+
   /* LOADING */
   if (mode === 'loading') return (<div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: '#1a1a1a' }}><div className="animate-spin h-10 w-10 border-4 border-yellow-400 border-t-transparent rounded-full" /></div>);
 
@@ -372,6 +419,12 @@ export default function Home() {
             <input type="file" accept=".xlsx,.xls,.csv" onChange={handleBulkUpload} className="hidden" disabled={uploading} />
           </label>
           <button onClick={loadContracts} className="text-sm font-medium px-4 py-2 rounded-lg border bg-white" style={{ borderColor: '#ccc', color: '#333' }}>{t(locale, 'admin.refresh')}</button>
+          
+          {selectedContracts.size > 0 && (
+            <button onClick={() => setDeleteAllConfirm(true)} className="text-sm font-medium px-4 py-2 rounded-lg bg-red-600 text-white shadow-sm hover:bg-red-700 ml-auto">
+              {t(locale, 'admin.deleteSelected')} ({selectedContracts.size})
+            </button>
+          )}
         </div>
         <div className="flex flex-col sm:flex-row gap-3 mb-6">
           <div className="relative flex-1">
@@ -465,10 +518,18 @@ export default function Home() {
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full">
-                <thead><tr style={{ backgroundColor: '#1a1a1a' }}>{['Contract','Client','Vehicle','Status','Photos','Tokens','Actions'].map(h => <th key={h} className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase">{h}</th>)}</tr></thead>
+                <thead><tr style={{ backgroundColor: '#1a1a1a' }}>
+                  <th className="px-4 py-3 w-10">
+                    <input type="checkbox" checked={selectedContracts.size === filteredContracts().length && filteredContracts().length > 0} onChange={toggleSelectAll} className="rounded border-gray-300" />
+                  </th>
+                  {['Contract','Client','Vehicle','Status','Photos','Tokens','Actions'].map(h => <th key={h} className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase">{h}</th>)}
+                </tr></thead>
                 <tbody className="divide-y" style={{ borderColor: '#f0f0f0' }}>
                   {filteredContracts().map(c => (
                     <tr key={c.id} className="hover:bg-gray-50">
+                      <td className="px-4 py-3">
+                        <input type="checkbox" checked={selectedContracts.has(c.id)} onChange={() => toggleSelect(c.id)} className="rounded border-gray-300" />
+                      </td>
                       <td className="px-4 py-3 text-sm font-medium text-gray-800">{c.contractNumber}</td>
                       <td className="px-4 py-3 text-sm text-gray-600"><div>{c.customerName}</div>{c.customerEmail && <div className="text-xs text-gray-400">{c.customerEmail}</div>}</td>
                       <td className="px-4 py-3 text-sm text-gray-600"><div>{c.vehicleModel}</div><div className="text-xs text-gray-400">{c.vehiclePlate}</div></td>
@@ -488,7 +549,19 @@ export default function Home() {
                           {c.tokens.length === 0 && <span className="text-xs text-gray-400">{t(locale, 'admin.noTokens')}</span>}
                         </div>
                       </td>
-                      <td className="px-4 py-3"><button onClick={() => { setTokenDialog({ contractId: c.id, contractNumber: c.contractNumber }); setGeneratedToken(null); }} className="text-xs font-medium px-2 py-1 rounded" style={{ backgroundColor: '#1a1a1a', color: '#FFCB05' }}>+ Token</button></td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-1.5">
+                          <button onClick={() => { setTokenDialog({ contractId: c.id, contractNumber: c.contractNumber }); setGeneratedToken(null); }} className="text-xs font-medium px-2 py-1 rounded" style={{ backgroundColor: '#1a1a1a', color: '#FFCB05' }}>+ Token</button>
+                          {deleteConfirm === c.id ? (
+                            <div className="flex items-center gap-1">
+                              <button onClick={() => handleDeleteContract(c.id)} className="text-xs font-medium px-2 py-1 rounded bg-red-600 text-white hover:bg-red-700">Yes</button>
+                              <button onClick={() => setDeleteConfirm(null)} className="text-xs font-medium px-2 py-1 rounded bg-gray-200 text-gray-700 hover:bg-gray-300">No</button>
+                            </div>
+                          ) : (
+                            <button onClick={() => setDeleteConfirm(c.id)} className="text-xs font-medium px-2 py-1 rounded bg-red-50 text-red-700 hover:bg-red-100 border border-red-200">{t(locale, 'admin.delete')}</button>
+                          )}
+                        </div>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -496,6 +569,28 @@ export default function Home() {
             </div>
           )}
         </div>
+
+        {deleteAllConfirm && (
+          <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4" onClick={() => setDeleteAllConfirm(false)}>
+            <div onClick={e => e.stopPropagation()} className="bg-white rounded-2xl p-6 shadow-xl max-w-md w-full">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center">
+                  <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"/></svg>
+                </div>
+                <div>
+                  <h3 className="font-semibold text-gray-800 text-lg">{t(locale, 'admin.deleteSelected')}</h3>
+                  <p className="text-sm text-gray-500">{selectedContracts.size} contracts</p>
+                </div>
+              </div>
+              <p className="text-sm text-gray-600 mb-6">{t(locale, 'admin.deleteAllConfirm')}</p>
+              <div className="flex gap-3">
+                <button onClick={handleDeleteSelected} className="flex-1 bg-red-600 text-white py-2.5 rounded-lg text-sm font-medium hover:bg-red-700">{t(locale, 'admin.deleteSelected')}</button>
+                <button onClick={() => setDeleteAllConfirm(false)} className="flex-1 bg-gray-100 text-gray-700 py-2.5 rounded-lg text-sm font-medium hover:bg-gray-200">{t(locale, 'admin.close')}</button>
+              </div>
+            </div>
+          </div>
+        )}
+
       </div>
     </div>
   );
