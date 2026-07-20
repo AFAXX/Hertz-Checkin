@@ -46,6 +46,12 @@ function CarDiagram({ onSelect, photoCounts }: { onSelect: (key: string) => void
       <ellipse cx="232" cy="420" rx="18" ry="26" fill="#334155" stroke="#1e293b" strokeWidth="2" />
       <ellipse cx="232" cy="420" rx="8" ry="13" fill="#64748b" />
 
+      <g onClick={() => onSelect('interior')} style={{ cursor: 'pointer' }}>
+        <rect x="80" y="180" width="140" height="170" rx="20" fill={done('interior') ? 'rgba(34,197,94,0.15)' : 'rgba(148,163,184,0.05)'} stroke={done('interior') ? '#22c55e' : '#94a3b8'} strokeWidth="1.5" strokeDasharray={done('interior') ? 'none' : '5 3'} />
+        {g('interior') > 0 && <><circle cx="200" cy="195" r="9" fill="#22c55e" /><text x="200" y="199" textAnchor="middle" fill="white" fontSize="9" fontWeight="bold">{g('interior')}</text></>}
+        <text x="150" y="270" textAnchor="middle" fill="#475569" fontSize="10" fontWeight="700" letterSpacing="0.5">INTERIOR</text>
+      </g>
+
       <g onClick={() => onSelect('front')} style={{ cursor: 'pointer' }}>
         <rect x="90" y="435" width="120" height="60" rx="10" fill={done('front') ? 'rgba(34,197,94,0.15)' : 'rgba(148,163,184,0.05)'} stroke={done('front') ? '#22c55e' : '#94a3b8'} strokeWidth="1.5" strokeDasharray={done('front') ? 'none' : '5 3'} />
         {g('front') > 0 && <><circle cx="200" cy="445" r="9" fill="#22c55e" /><text x="200" y="449" textAnchor="middle" fill="white" fontSize="9" fontWeight="bold">{g('front')}</text></>}
@@ -203,6 +209,18 @@ export default function Home() {
     finally { setUploading(false); if (e.target) e.target.value = ''; }
   };
   const copyToClip = (text: string, id: string) => { navigator.clipboard.writeText(text); setCopied(id); setTimeout(() => setCopied(''), 2000); };
+  const [syncing, setSyncing] = useState(false);
+  const handleSyncCategories = async () => {
+    if (!confirm('This will remove any extra/duplicate photo categories from the database and keep only: Front, Passenger Side, Back, Driver Side, Interior. Photos already uploaded under removed categories will also be removed from the database record (files themselves are not deleted). Continue?')) return;
+    setSyncing(true);
+    try {
+      const r = await fetch('/api/admin/seed', { method: 'POST' });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.error || 'Sync failed');
+      alert('Done: ' + d.message);
+    } catch (err: unknown) { alert(err instanceof Error ? err.message : 'Sync failed'); }
+    finally { setSyncing(false); }
+  };
   const statusBadge = (s: string) => s === 'completed' ? 'bg-green-100 text-green-800' : s === 'in_progress' ? 'bg-yellow-100 text-yellow-800' : 'bg-gray-100 text-gray-600';
 
   // Filter contracts based on search query and status filter
@@ -372,6 +390,7 @@ export default function Home() {
             <input type="file" accept=".xlsx,.xls,.csv" onChange={handleBulkUpload} className="hidden" disabled={uploading} />
           </label>
           <button onClick={loadContracts} className="text-sm font-medium px-4 py-2 rounded-lg border bg-white" style={{ borderColor: '#ccc', color: '#333' }}>{t(locale, 'admin.refresh')}</button>
+          <button onClick={handleSyncCategories} disabled={syncing} className="text-sm font-medium px-4 py-2 rounded-lg border bg-white" style={{ borderColor: '#ccc', color: '#333' }}>{syncing ? 'Syncing...' : 'Sync Photo Categories'}</button>
         </div>
 
         {/* SEARCH BAR AND FILTER */}
