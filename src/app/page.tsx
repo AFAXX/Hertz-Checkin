@@ -111,6 +111,10 @@ const [bulkResult, setBulkResult] = useState<any>(null);
 const [tokenDialog, setTokenDialog] = useState<{ contractId: string; contractNumber: string } | null>(null);
 const [generatedToken, setGeneratedToken] = useState<{ token: string; expiresAt: string; link: string } | null>(null);
 const [copied, setCopied] = useState('');
+// DELETE STATES
+const [selectedContracts, setSelectedContracts] = useState<Set<string>>(new Set());
+const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
+const [deleteAllConfirm, setDeleteAllConfirm] = useState(false);
 const [contract, setContract] = useState<ValidatedContract | null>(null);
 const [checklist, setChecklist] = useState<ChecklistItem[]>([]);
 const [photoCounts, setPhotoCounts] = useState<Record<string, number>>({});
@@ -229,6 +233,43 @@ c.vehicleModel.toLowerCase().includes(q) ||
 }
 return result;
 }, [contracts, searchQuery, statusFilter]);
+// DELETE FUNCTIONS
+const handleDeleteContract = async (id: string) => {
+try {
+const r = await fetch('/api/admin/contracts?id=' + id, { method: 'DELETE' });
+if (!r.ok) {
+const errData = await r.json().catch(() => ({}));
+throw new Error(errData.error || 'Delete failed');
+}
+setDeleteConfirm(null);
+setSelectedContracts(prev => { const next = new Set(prev); next.delete(id); return next; });
+loadContracts();
+} catch (err: unknown) { alert(err instanceof Error ? err.message : 'Failed to delete'); }
+};
+const handleDeleteSelected = async () => {
+if (selectedContracts.size === 0) return;
+const ids = Array.from(selectedContracts);
+try {
+for (const id of ids) {
+const r = await fetch('/api/admin/contracts?id=' + id, { method: 'DELETE' });
+if (!r.ok) {
+const errData = await r.json().catch(() => ({}));
+throw new Error(errData.error || `Delete failed for ${id}`);
+}
+}
+setSelectedContracts(new Set());
+setDeleteAllConfirm(false);
+loadContracts();
+} catch (err: unknown) { alert(err instanceof Error ? err.message : 'Failed to delete'); }
+};
+const toggleSelectAll = () => {
+const filtered = filteredContracts();
+if (selectedContracts.size === filtered.length && filtered.length > 0) setSelectedContracts(new Set());
+else setSelectedContracts(new Set(filtered.map(c => c.id)));
+};
+const toggleSelect = (id: string) => {
+setSelectedContracts(prev => { const next = new Set(prev); if (next.has(id)) next.delete(id); else next.add(id); return next; });
+};
 /* LOADING */
 if (mode === 'loading') return (<div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: '#1a1a1a' }}><div className="animate-spin h-10 w-10 border-4 border-yellow-400 border-t-transparent rounded-full" /></div>);
 /* COMPLETED */
@@ -285,7 +326,7 @@ if (mode === 'customer') return (
              <div className="flex items-center justify-between">
                <div className="flex items-center gap-3">
                  <div className={'w-9 h-9 rounded-full flex items-center justify-center text-sm ' + (full ? 'bg-red-100' : count > 0 ? 'bg-green-100' : 'bg-gray-100')}>
-                   {isUploading ? <div className="animate-spin h-4 w-4 border-2 border-yellow-500 border-t-transparent rounded-full" /> : full ? '\uD83D\uDD1D' : count > 0 ? '\u2713' : '\uD83D\uDCF7'}
+                   {isUploading ? <div className="animate-spin h-4 w-4 border-2 border-yellow-500 border-t-transparent rounded-full" /> : full ? '🔝' : count > 0 ? '✓' : '📷'}
                  </div>
                  <div><p className="font-semibold text-gray-800 text-sm">{translatedLabel}</p><p className="text-xs text-gray-500">{count}/{MAX_PHOTOS} foto</p></div>
                </div>
@@ -351,6 +392,11 @@ return (
  <input type="file" accept=".xlsx,.xls,.csv" onChange={handleBulkUpload} className="hidden" disabled={uploading} />
  </label>
  <button onClick={loadContracts} className="text-sm font-medium px-4 py-2 rounded-lg border bg-white" style={{ borderColor: '#ccc', color: '#333' }}>{t(locale, 'admin.refresh')}</button>
+ {selectedContracts.size > 0 && (
+ <button onClick={() => setDeleteAllConfirm(true)} className="text-sm font-medium px-4 py-2 rounded-lg bg-red-600 text-white shadow-sm hover:bg-red-700 ml-auto">
+ Elimina Selezionati ({selectedContracts.size})
+ </button>
+ )}
  </div>
     {/* SEARCH BAR AND FILTER */}
      <div className="flex flex-col sm:flex-row gap-3 mb-6">
@@ -365,7 +411,7 @@ return (
            style={{ borderColor: '#ccc' }}
          />
          {searchQuery && (
-           <button onClick={() => setSearchQuery('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+           <button onClick={() => setSearchQuery('')}} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
            </button>
          )}
@@ -394,173 +440,23 @@ return (
          <button onClick={() => setBulkResult(null)} className="mt-2 text-xs text-gray-400">Chiudi</button>
        </div>
      )}
-
-     {/* MODALE NUOVO CONTRATTO - GRAFICA RIPRISTINATA */}
      {showCreate && (
-       <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-40 p-4 backdrop-blur-sm" onClick={() => setShowCreate(false)}>
-         <form onSubmit={handleCreateContract} onClick={e => e.stopPropagation()} className="bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-hidden flex flex-col">
-           {/* Header Hertz */}
-           <div className="px-6 py-5 border-b border-gray-100" style={{ background: 'linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%)' }}>
-             <div className="flex items-center gap-3">
-               <div className="w-11 h-11 rounded-xl flex items-center justify-center font-black text-xl shadow-lg" style={{ backgroundColor: '#FFCB05', color: '#1a1a1a' }}>H</div>
-               <div>
-                 <h2 className="font-bold text-white text-lg">{t(locale, 'admin.newContractTitle')}</h2>
-                 <p className="text-xs text-gray-400 mt-0.5">{t(locale, 'admin.newContractDesc')}</p>
-               </div>
-             </div>
+       <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-40 p-4" onClick={() => setShowCreate(false)}>
+         <form onSubmit={handleCreateContract} onClick={e => e.stopPropagation()} className="bg-white rounded-2xl p-6 shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto">
+           <h2 className="font-semibold text-gray-800 mb-1 text-lg">{t(locale, 'admin.newContractTitle')}</h2>
+           <p className="text-xs text-gray-500 mb-4">{t(locale, 'admin.newContractDesc')}</p>
+           <div className="space-y-3">
+             {[{ key: 'contractNumber', label: t(locale, 'admin.contractNumber'), required: true },{ key: 'customerName', label: t(locale, 'admin.customerName'), required: true },{ key: 'vehiclePlate', label: t(locale, 'admin.vehiclePlate') },{ key: 'vehicleModel', label: t(locale, 'admin.vehicleModel') },{ key: 'customerEmail', label: t(locale, 'admin.customerEmail') },{ key: 'customerPhone', label: t(locale, 'admin.customerPhone') },{ key: 'vehicleColor', label: t(locale, 'admin.vehicleColor') }].map(f => (
+               <div key={f.key}><label className="block text-xs font-medium text-gray-600 mb-1">{f.label}{f.required && '*'}</label><input type="text" value={(createForm as any)[f.key]} onChange={e => setCreateForm(p => ({ ...p, [f.key]: e.target.value }))} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" required={f.required} /></div>
+             ))}
            </div>
-
-           {/* Body */}
-           <div className="p-6 overflow-y-auto flex-1">
-             {/* Campi obbligatori - larghezza intera */}
-             <div className="space-y-4">
-               <div>
-                 <label className="flex items-center gap-1.5 text-xs font-semibold text-gray-700 mb-1.5 uppercase tracking-wide">
-                   <svg className="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
-                   {t(locale, 'admin.contractNumber')} <span className="text-red-500">*</span>
-                 </label>
-                 <input
-                   type="text"
-                   value={createForm.contractNumber}
-                   onChange={e => setCreateForm(p => ({ ...p, contractNumber: e.target.value }))}
-                   placeholder="es. 1234567890"
-                   className="w-full border-2 border-gray-200 rounded-lg px-3.5 py-2.5 text-sm focus:border-yellow-400 focus:outline-none focus:ring-2 focus:ring-yellow-100 transition-all"
-                   required
-                 />
-               </div>
-
-               <div>
-                 <label className="flex items-center gap-1.5 text-xs font-semibold text-gray-700 mb-1.5 uppercase tracking-wide">
-                   <svg className="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
-                   {t(locale, 'admin.customerName')} <span className="text-red-500">*</span>
-                 </label>
-                 <input
-                   type="text"
-                   value={createForm.customerName}
-                   onChange={e => setCreateForm(p => ({ ...p, customerName: e.target.value }))}
-                   placeholder="Nome e cognome"
-                   className="w-full border-2 border-gray-200 rounded-lg px-3.5 py-2.5 text-sm focus:border-yellow-400 focus:outline-none focus:ring-2 focus:ring-yellow-100 transition-all"
-                   required
-                 />
-               </div>
-
-               {/* Divider "Veicolo" */}
-               <div className="flex items-center gap-3 pt-2">
-                 <div className="flex-1 h-px bg-gray-200"></div>
-                 <span className="text-xs text-gray-400 font-medium uppercase tracking-wider flex items-center gap-1.5">
-                   <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" /></svg>
-                   Veicolo
-                 </span>
-                 <div className="flex-1 h-px bg-gray-200"></div>
-               </div>
-
-               {/* Campi veicolo - 2 colonne */}
-               <div className="grid grid-cols-2 gap-3">
-                 <div>
-                   <label className="flex items-center gap-1.5 text-xs font-medium text-gray-600 mb-1.5">
-                     <svg className="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 20l4-16m2 16l4-16M6 9h14M4 15h14" /></svg>
-                     {t(locale, 'admin.vehiclePlate')}
-                   </label>
-                   <input
-                     type="text"
-                     value={createForm.vehiclePlate}
-                     onChange={e => setCreateForm(p => ({ ...p, vehiclePlate: e.target.value }))}
-                     placeholder="es. AB123CD"
-                     className="w-full border-2 border-gray-200 rounded-lg px-3 py-2 text-sm focus:border-yellow-400 focus:outline-none focus:ring-2 focus:ring-yellow-100 transition-all"
-                   />
-                 </div>
-                 <div>
-                   <label className="flex items-center gap-1.5 text-xs font-medium text-gray-600 mb-1.5">
-                     <svg className="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 17a2 2 0 11-4 0 2 2 0 014 0zM19 17a2 2 0 11-4 0 2 2 0 014 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16V6a1 1 0 00-1-1H4a1 1 0 00-1 1v10a1 1 0 001 1h1m8-1a1 1 0 01-1 1H9m4-1V8a1 1 0 011-1h2.586a1 1 0 01.707.293l3.414 3.414a1 1 0 01.293.707V16a1 1 0 01-1 1h-1m-6-1a1 1 0 001 1h1M5 17a2 2 0 104 0m-4 0a2 2 0 114 0m6 0a2 2 0 104 0m-4 0a2 2 0 114 0" /></svg>
-                     {t(locale, 'admin.vehicleModel')}
-                   </label>
-                   <input
-                     type="text"
-                     value={createForm.vehicleModel}
-                     onChange={e => setCreateForm(p => ({ ...p, vehicleModel: e.target.value }))}
-                     placeholder="es. Fiat Panda"
-                     className="w-full border-2 border-gray-200 rounded-lg px-3 py-2 text-sm focus:border-yellow-400 focus:outline-none focus:ring-2 focus:ring-yellow-100 transition-all"
-                   />
-                 </div>
-                 <div>
-                   <label className="flex items-center gap-1.5 text-xs font-medium text-gray-600 mb-1.5">
-                     <svg className="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" /></svg>
-                     {t(locale, 'admin.vehicleColor')}
-                   </label>
-                   <input
-                     type="text"
-                     value={createForm.vehicleColor}
-                     onChange={e => setCreateForm(p => ({ ...p, vehicleColor: e.target.value }))}
-                     placeholder="es. Bianco"
-                     className="w-full border-2 border-gray-200 rounded-lg px-3 py-2 text-sm focus:border-yellow-400 focus:outline-none focus:ring-2 focus:ring-yellow-100 transition-all"
-                   />
-                 </div>
-               </div>
-
-               {/* Divider "Contatti" */}
-               <div className="flex items-center gap-3 pt-2">
-                 <div className="flex-1 h-px bg-gray-200"></div>
-                 <span className="text-xs text-gray-400 font-medium uppercase tracking-wider flex items-center gap-1.5">
-                   <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
-                   Contatti (opzionali)
-                 </span>
-                 <div className="flex-1 h-px bg-gray-200"></div>
-               </div>
-
-               {/* Campi contatti */}
-               <div className="grid grid-cols-2 gap-3">
-                 <div>
-                   <label className="flex items-center gap-1.5 text-xs font-medium text-gray-600 mb-1.5">
-                     <svg className="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
-                     {t(locale, 'admin.customerEmail')}
-                   </label>
-                   <input
-                     type="email"
-                     value={createForm.customerEmail}
-                     onChange={e => setCreateForm(p => ({ ...p, customerEmail: e.target.value }))}
-                     placeholder="email@esempio.com"
-                     className="w-full border-2 border-gray-200 rounded-lg px-3 py-2 text-sm focus:border-yellow-400 focus:outline-none focus:ring-2 focus:ring-yellow-100 transition-all"
-                   />
-                 </div>
-                 <div>
-                   <label className="flex items-center gap-1.5 text-xs font-medium text-gray-600 mb-1.5">
-                     <svg className="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" /></svg>
-                     {t(locale, 'admin.customerPhone')}
-                   </label>
-                   <input
-                     type="tel"
-                     value={createForm.customerPhone}
-                     onChange={e => setCreateForm(p => ({ ...p, customerPhone: e.target.value }))}
-                     placeholder="+356 ..."
-                     className="w-full border-2 border-gray-200 rounded-lg px-3 py-2 text-sm focus:border-yellow-400 focus:outline-none focus:ring-2 focus:ring-yellow-100 transition-all"
-                   />
-                 </div>
-               </div>
-             </div>
-           </div>
-
-           {/* Footer con pulsanti */}
-           <div className="px-6 py-4 border-t border-gray-100 bg-gray-50 flex gap-2">
-             <button
-               type="button"
-               onClick={() => setShowCreate(false)}
-               className="flex-1 px-4 py-2.5 bg-white border border-gray-300 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-100 transition-colors"
-             >
-               {t(locale, 'admin.cancel') !== 'admin.cancel' ? t(locale, 'admin.cancel') : 'Annulla'}
-             </button>
-             <button
-               type="submit"
-               className="flex-[2] text-white py-2.5 rounded-lg text-sm font-semibold shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2"
-               style={{ backgroundColor: '#1a1a1a' }}
-             >
-               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
-               {t(locale, 'admin.createAndGenerate')}
-             </button>
+           <div className="flex gap-2 mt-5">
+             <button type="submit" className="flex-1 text-white py-2.5 rounded-lg text-sm font-medium" style={{ backgroundColor: '#1a1a1a' }}>{t(locale, 'admin.createAndGenerate')}</button>
+             <button type="button" onClick={() => setShowCreate(false)} className="px-4 py-2.5 bg-gray-100 text-gray-700 rounded-lg text-sm">Cancel</button>
            </div>
          </form>
        </div>
      )}
-
      {(generatedToken || tokenDialog) && (
        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-40 p-4" onClick={() => { setGeneratedToken(null); setTokenDialog(null); }}>
          <div onClick={e => e.stopPropagation()} className="bg-white rounded-2xl p-6 shadow-xl max-w-md w-full">
@@ -595,10 +491,18 @@ return (
        ) : (
          <div className="overflow-x-auto">
            <table className="w-full">
-             <thead><tr style={{ backgroundColor: '#1a1a1a' }}>{['Contract','Client','Vehicle','Status','Photos','Tokens','Actions'].map(h => <th key={h} className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase">{h}</th>)}</tr></thead>
+             <thead><tr style={{ backgroundColor: '#1a1a1a' }}>
+               <th className="px-4 py-3 w-10">
+                 <input type="checkbox" checked={selectedContracts.size === filteredContracts().length && filteredContracts().length > 0} onChange={toggleSelectAll} className="rounded border-gray-300" />
+               </th>
+               {['Contract','Client','Vehicle','Status','Photos','Tokens','Actions'].map(h => <th key={h} className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase">{h}</th>)}
+             </tr></thead>
              <tbody className="divide-y" style={{ borderColor: '#f0f0f0' }}>
                {filteredContracts().map(c => (
                  <tr key={c.id} className="hover:bg-gray-50">
+                   <td className="px-4 py-3">
+                     <input type="checkbox" checked={selectedContracts.has(c.id)} onChange={() => toggleSelect(c.id)} className="rounded border-gray-300" />
+                   </td>
                    <td className="px-4 py-3 text-sm font-medium text-gray-800">{c.contractNumber}</td>
                    <td className="px-4 py-3 text-sm text-gray-600"><div>{c.customerName}</div>{c.customerEmail && <div className="text-xs text-gray-400">{c.customerEmail}</div>}</td>
                    <td className="px-4 py-3 text-sm text-gray-600"><div>{c.vehicleModel}</div><div className="text-xs text-gray-400">{c.vehiclePlate}</div></td>
@@ -617,7 +521,19 @@ return (
                        {c.tokens.length === 0 && <span className="text-xs text-gray-400">Nessun token</span>}
                      </div>
                    </td>
-                   <td className="px-4 py-3"><button onClick={() => { setTokenDialog({ contractId: c.id, contractNumber: c.contractNumber }); setGeneratedToken(null); }} className="text-xs font-medium px-2 py-1 rounded" style={{ backgroundColor: '#1a1a1a', color: '#FFCB05' }}>+ Token</button></td>
+                   <td className="px-4 py-3">
+                     <div className="flex items-center gap-1.5">
+                       <button onClick={() => { setTokenDialog({ contractId: c.id, contractNumber: c.contractNumber }); setGeneratedToken(null); }} className="text-xs font-medium px-2 py-1 rounded" style={{ backgroundColor: '#1a1a1a', color: '#FFCB05' }}>+ Token</button>
+                       {deleteConfirm === c.id ? (
+                         <div className="flex items-center gap-1">
+                           <button onClick={() => handleDeleteContract(c.id)} className="text-xs font-medium px-2 py-1 rounded bg-red-600 text-white hover:bg-red-700">Sì</button>
+                           <button onClick={() => setDeleteConfirm(null)} className="text-xs font-medium px-2 py-1 rounded bg-gray-200 text-gray-700 hover:bg-gray-300">No</button>
+                         </div>
+                       ) : (
+                         <button onClick={() => setDeleteConfirm(c.id)} className="text-xs font-medium px-2 py-1 rounded bg-red-50 text-red-700 hover:bg-red-100 border border-red-200">Elimina</button>
+                       )}
+                     </div>
+                   </td>
                  </tr>
                ))}
              </tbody>
@@ -625,6 +541,26 @@ return (
          </div>
        )}
      </div>
+     {deleteAllConfirm && (
+       <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4" onClick={() => setDeleteAllConfirm(false)}>
+         <div onClick={e => e.stopPropagation()} className="bg-white rounded-2xl p-6 shadow-xl max-w-md w-full">
+           <div className="flex items-center gap-3 mb-4">
+             <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center">
+               <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"/></svg>
+             </div>
+             <div>
+               <h3 className="font-semibold text-gray-800 text-lg">Elimina Selezionati</h3>
+               <p className="text-sm text-gray-500">{selectedContracts.size} contratti</p>
+             </div>
+           </div>
+           <p className="text-sm text-gray-600 mb-6">Sei sicuro di voler eliminare i contratti selezionati? Questa azione non può essere annullata.</p>
+           <div className="flex gap-3">
+             <button onClick={handleDeleteSelected} className="flex-1 bg-red-600 text-white py-2.5 rounded-lg text-sm font-medium hover:bg-red-700">Elimina Selezionati</button>
+             <button onClick={() => setDeleteAllConfirm(false)} className="flex-1 bg-gray-100 text-gray-700 py-2.5 rounded-lg text-sm font-medium hover:bg-gray-200">Chiudi</button>
+           </div>
+         </div>
+       </div>
+     )}
    </div>
  </div>
 );
