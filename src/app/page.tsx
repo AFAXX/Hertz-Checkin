@@ -9,6 +9,10 @@ interface AdminContract {
   tokens: Array<{ id: string; token: string; expiresAt: string; usedAt: string | null; isExpired: boolean }>;
   photosSubmitted: number; photos: Array<{ key: string; label: string; fileName: string; uploadedAt: string }>;
 }
+interface EditContract {
+  id: string; contractNumber: string; customerName: string; customerEmail: string; customerPhone: string;
+  vehiclePlate: string; vehicleModel: string; vehicleColor: string;
+}
 interface ChecklistItem {
   id: string; key: string; label: string; labelEn: string | null; description: string | null; icon: string | null;
   required: boolean; completed: boolean; photoCount: number;
@@ -24,19 +28,30 @@ function CarDiagram({ onSelect, photoCounts }: { onSelect: (key: string) => void
   const done = (k: string) => g(k) > 0;
   return (
     <svg viewBox="0 0 300 540" className="w-full max-w-[280px] mx-auto">
+      {/* Car shadow */}
       <path d="M108 510 Q60 490 48 430 L48 110 Q48 55 108 32 L192 32 Q252 55 252 110 L252 430 Q240 490 192 510 Z" fill="rgba(0,0,0,0.06)" transform="translate(4,4)" />
+      {/* Car body */}
       <path d="M108 510 Q60 490 48 430 L48 110 Q48 55 108 32 L192 32 Q252 55 252 110 L252 430 Q240 490 192 510 Z" fill="#f1f5f9" stroke="#94a3b8" strokeWidth="2.5" />
+      {/* Lower bumper area */}
       <path d="M120 430 L120 490 Q150 510 180 490 L180 430 Q150 420 120 430 Z" fill="#e2e8f0" stroke="#94a3b8" strokeWidth="1" opacity="0.5" />
+      {/* Lower windshield */}
       <path d="M95 390 Q150 410 205 390 L185 350 Q150 365 115 350 Z" fill="#bfdbfe" stroke="#60a5fa" strokeWidth="1.5" />
+      {/* Interior zone (cabin rectangle) */}
       <rect x="80" y="180" width="140" height="170" rx="20" fill="#e8ecf1" stroke="#b0b8c4" strokeWidth="1" />
+      {/* Upper windshield */}
       <path d="M95 180 Q150 160 205 180 L185 215 Q150 200 115 215 Z" fill="#bfdbfe" stroke="#60a5fa" strokeWidth="1.5" />
+      {/* Roof section */}
       <path d="M120 110 L120 180 Q150 170 180 180 L180 110 Q150 100 120 110 Z" fill="#e2e8f0" stroke="#94a3b8" strokeWidth="1" opacity="0.5" />
+      {/* Door handles */}
       <rect x="38" y="365" width="12" height="20" rx="4" fill="#cbd5e1" stroke="#94a3b8" strokeWidth="1" />
       <rect x="250" y="365" width="12" height="20" rx="4" fill="#cbd5e1" stroke="#94a3b8" strokeWidth="1" />
+      {/* Front lights */}
       <ellipse cx="100" cy="478" rx="12" ry="8" fill="#fde68a" stroke="#f59e0b" strokeWidth="1.5" />
       <ellipse cx="200" cy="478" rx="12" ry="8" fill="#fde68a" stroke="#f59e0b" strokeWidth="1.5" />
+      {/* Rear lights */}
       <ellipse cx="100" cy="60" rx="10" ry="7" fill="#fca5a5" stroke="#ef4444" strokeWidth="1.5" />
       <ellipse cx="200" cy="60" rx="10" ry="7" fill="#fca5a5" stroke="#ef4444" strokeWidth="1.5" />
+      {/* Wheels */}
       <ellipse cx="62" cy="155" rx="18" ry="28" fill="#334155" stroke="#1e293b" strokeWidth="2" />
       <ellipse cx="62" cy="155" rx="8" ry="14" fill="#64748b" />
       <ellipse cx="238" cy="155" rx="18" ry="28" fill="#334155" stroke="#1e293b" strokeWidth="2" />
@@ -46,33 +61,38 @@ function CarDiagram({ onSelect, photoCounts }: { onSelect: (key: string) => void
       <ellipse cx="232" cy="420" rx="18" ry="26" fill="#334155" stroke="#1e293b" strokeWidth="2" />
       <ellipse cx="232" cy="420" rx="8" ry="13" fill="#64748b" />
 
-      <g onClick={() => onSelect('interior')} style={{ cursor: 'pointer' }}>
-        <rect x="80" y="180" width="140" height="170" rx="20" fill={done('interior') ? 'rgba(34,197,94,0.15)' : 'rgba(148,163,184,0.05)'} stroke={done('interior') ? '#22c55e' : '#94a3b8'} strokeWidth="1.5" strokeDasharray={done('interior') ? 'none' : '5 3'} />
-        {g('interior') > 0 && <><circle cx="200" cy="195" r="9" fill="#22c55e" /><text x="200" y="199" textAnchor="middle" fill="white" fontSize="9" fontWeight="bold">{g('interior')}</text></>}
-        <text x="150" y="270" textAnchor="middle" fill="#475569" fontSize="10" fontWeight="700" letterSpacing="0.5">INTERIOR</text>
-      </g>
-
+      {/* FRONT clickable zone */}
       <g onClick={() => onSelect('front')} style={{ cursor: 'pointer' }}>
         <rect x="90" y="435" width="120" height="60" rx="10" fill={done('front') ? 'rgba(34,197,94,0.15)' : 'rgba(148,163,184,0.05)'} stroke={done('front') ? '#22c55e' : '#94a3b8'} strokeWidth="1.5" strokeDasharray={done('front') ? 'none' : '5 3'} />
         {g('front') > 0 && <><circle cx="200" cy="445" r="9" fill="#22c55e" /><text x="200" y="449" textAnchor="middle" fill="white" fontSize="9" fontWeight="bold">{g('front')}</text></>}
       </g>
+      {/* BACK clickable zone */}
       <g onClick={() => onSelect('back')} style={{ cursor: 'pointer' }}>
         <rect x="90" y="75" width="120" height="60" rx="10" fill={done('back') ? 'rgba(34,197,94,0.15)' : 'rgba(148,163,184,0.05)'} stroke={done('back') ? '#22c55e' : '#94a3b8'} strokeWidth="1.5" strokeDasharray={done('back') ? 'none' : '5 3'} />
         {g('back') > 0 && <><circle cx="200" cy="85" r="9" fill="#22c55e" /><text x="200" y="89" textAnchor="middle" fill="white" fontSize="9" fontWeight="bold">{g('back')}</text></>}
       </g>
+      {/* PASSENGER SIDE clickable zone */}
       <g onClick={() => onSelect('passenger_side')} style={{ cursor: 'pointer' }}>
         <rect x="28" y="195" width="50" height="130" rx="10" fill={done('passenger_side') ? 'rgba(34,197,94,0.15)' : 'rgba(148,163,184,0.05)'} stroke={done('passenger_side') ? '#22c55e' : '#94a3b8'} strokeWidth="1.5" strokeDasharray={done('passenger_side') ? 'none' : '5 3'} />
         {g('passenger_side') > 0 && <><circle cx="68" cy="205" r="9" fill="#22c55e" /><text x="68" y="209" textAnchor="middle" fill="white" fontSize="9" fontWeight="bold">{g('passenger_side')}</text></>}
       </g>
+      {/* DRIVER SIDE clickable zone */}
       <g onClick={() => onSelect('driver_side')} style={{ cursor: 'pointer' }}>
         <rect x="222" y="195" width="50" height="130" rx="10" fill={done('driver_side') ? 'rgba(34,197,94,0.15)' : 'rgba(148,163,184,0.05)'} stroke={done('driver_side') ? '#22c55e' : '#94a3b8'} strokeWidth="1.5" strokeDasharray={done('driver_side') ? 'none' : '5 3'} />
         {g('driver_side') > 0 && <><circle cx="262" cy="205" r="9" fill="#22c55e" /><text x="262" y="209" textAnchor="middle" fill="white" fontSize="9" fontWeight="bold">{g('driver_side')}</text></>}
       </g>
+      {/* INTERIOR clickable zone */}
+      <g onClick={() => onSelect('interior')} style={{ cursor: 'pointer' }}>
+        <rect x="90" y="215" width="120" height="90" rx="12" fill={done('interior') ? 'rgba(34,197,94,0.15)' : 'rgba(148,163,184,0.05)'} stroke={done('interior') ? '#22c55e' : '#94a3b8'} strokeWidth="1.5" strokeDasharray={done('interior') ? 'none' : '5 3'} />
+        {g('interior') > 0 && <><circle cx="200" cy="225" r="9" fill="#22c55e" /><text x="200" y="229" textAnchor="middle" fill="white" fontSize="9" fontWeight="bold">{g('interior')}</text></>}
+      </g>
 
+      {/* Labels */}
       <text x="150" y="525" textAnchor="middle" fill="#475569" fontSize="11" fontWeight="700" letterSpacing="1">FRONT</text>
       <text x="150" y="22" textAnchor="middle" fill="#475569" fontSize="11" fontWeight="700" letterSpacing="1">BACK</text>
       <text x="14" y="265" textAnchor="middle" fill="#475569" fontSize="9" fontWeight="600" transform="rotate(-90,14,265)" letterSpacing="0.5">PASSENGER</text>
       <text x="286" y="265" textAnchor="middle" fill="#475569" fontSize="9" fontWeight="600" transform="rotate(90,286,265)" letterSpacing="0.5">DRIVER</text>
+      <text x="150" y="270" textAnchor="middle" fill="#475569" fontSize="10" fontWeight="700" letterSpacing="0.5">INTERIOR</text>
     </svg>
   );
 }
@@ -89,6 +109,10 @@ export default function Home() {
   const [showCreate, setShowCreate] = useState(false);
   const [createForm, setCreateForm] = useState({ contractNumber: '', customerName: '', customerEmail: '', customerPhone: '', vehiclePlate: '', vehicleModel: '', vehicleColor: '' });
   const [uploading, setUploading] = useState(false);
+  const [editContract, setEditContract] = useState<EditContract | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
+  const [selectedContracts, setSelectedContracts] = useState<Set<string>>(new Set());
+  const [deleteAllConfirm, setDeleteAllConfirm] = useState(false);
   const [bulkResult, setBulkResult] = useState<any>(null);
   const [tokenDialog, setTokenDialog] = useState<{ contractId: string; contractNumber: string } | null>(null);
   const [generatedToken, setGeneratedToken] = useState<{ token: string; expiresAt: string; link: string } | null>(null);
@@ -171,10 +195,14 @@ export default function Home() {
 
   const totalPhotos = Object.values(photoCounts).reduce((s, c) => s + c, 0);
 
-  // Only Italian (default) and English (set by admin) labels exist in the DB.
-  // Every other language falls back to Italian for the requirement label itself,
-  // while all surrounding UI copy still uses the chosen locale via t().
-  const getLabel = (item: ChecklistItem) => (locale === 'en' && item.labelEn ? item.labelEn : item.label);
+  // Use i18n translations for photo labels (all 17 languages supported)
+  // Falls back to DB label if i18n key is missing
+  const getLabel = (item: ChecklistItem) => {
+    const translated = t(locale, 'photo.' + item.key)
+    // If t() returned the key itself (no translation found), fall back to DB label
+    if (translated === 'photo.' + item.key) return item.label
+    return translated
+  }
 
   const handleSubmit = async () => {
     if (totalPhotos === 0 || isSubmitting) return;
@@ -223,6 +251,61 @@ export default function Home() {
   };
   const statusBadge = (s: string) => s === 'completed' ? 'bg-green-100 text-green-800' : s === 'in_progress' ? 'bg-yellow-100 text-yellow-800' : 'bg-gray-100 text-gray-600';
 
+  const handleDeleteContract = async (id: string) => {
+    try {
+      const r = await fetch('/api/admin/contracts?id=' + id, { method: 'DELETE' });
+      if (!r.ok) throw new Error('Delete failed');
+      setDeleteConfirm(null);
+      setSelectedContracts(prev => { const next = new Set(prev); next.delete(id); return next; });
+      loadContracts();
+    } catch (err: unknown) { alert(err instanceof Error ? err.message : 'Failed to delete'); }
+  };
+
+  const handleDeleteSelected = async () => {
+    // If some are selected, delete selected. Otherwise delete ALL.
+    const idsToDelete = selectedContracts.size > 0
+      ? Array.from(selectedContracts)
+      : contracts.map(c => c.id);
+    if (idsToDelete.length === 0) return;
+    try {
+      for (const id of idsToDelete) {
+        const r = await fetch('/api/admin/contracts?id=' + id, { method: 'DELETE' });
+        if (!r.ok) throw new Error('Delete failed for ' + id);
+      }
+      setSelectedContracts(new Set());
+      setDeleteAllConfirm(false);
+      loadContracts();
+    } catch (err: unknown) { alert(err instanceof Error ? err.message : 'Failed to delete'); }
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedContracts.size === filteredContracts().length) {
+      setSelectedContracts(new Set());
+    } else {
+      setSelectedContracts(new Set(filteredContracts().map(c => c.id)));
+    }
+  };
+
+  const toggleSelectContract = (id: string) => {
+    setSelectedContracts(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  const handleEditContract = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editContract) return;
+    try {
+      const r = await fetch('/api/admin/contracts', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(editContract) });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.error);
+      setEditContract(null);
+      loadContracts();
+    } catch (err: unknown) { alert(err instanceof Error ? err.message : 'Failed to update'); }
+  };
+
   // Filter contracts based on search query and status filter
   const filteredContracts = useCallback(() => {
     let result = contracts;
@@ -254,7 +337,7 @@ export default function Home() {
         </div>
         <h1 className="text-2xl font-bold text-gray-900 mb-2">{t(locale, 'confirm.title')}</h1>
         <p className="text-gray-600">{t(locale, 'confirm.subtitle')}</p>
-        <div className="mt-8 p-4 bg-gray-50 rounded-xl"><p className="text-gray-500 text-xs">Grazie per aver scelto Hertz Malta</p></div>
+        <div className="mt-8 p-4 bg-gray-50 rounded-xl"><p className="text-gray-500 text-xs">{t(locale, 'confirm.savedSecure')}</p></div>
       </div>
     </div>
   );
@@ -265,7 +348,7 @@ export default function Home() {
       <div className="bg-white rounded-2xl shadow-xl p-6 max-w-md w-full">
         <div className="text-center mb-6">
           <h1 className="text-lg font-bold text-gray-900">HERTZ MALTA</h1>
-          <p className="text-sm text-gray-500 mt-1">Choose your language / Scegli la tua lingua</p>
+          <p className="text-sm text-gray-500 mt-1">{t(locale, 'checklist.chooseLanguage')}</p>
         </div>
         <div className="grid grid-cols-2 gap-2">
           {LOCALES.map(l => (
@@ -391,15 +474,18 @@ export default function Home() {
           </label>
           <button onClick={loadContracts} className="text-sm font-medium px-4 py-2 rounded-lg border bg-white" style={{ borderColor: '#ccc', color: '#333' }}>{t(locale, 'admin.refresh')}</button>
           <button onClick={handleSyncCategories} disabled={syncing} className="text-sm font-medium px-4 py-2 rounded-lg border bg-white" style={{ borderColor: '#ccc', color: '#333' }}>{syncing ? 'Syncing...' : 'Sync Photo Categories'}</button>
+          {contracts.length > 0 && (
+            <button onClick={() => setDeleteAllConfirm(true)} className="text-sm font-medium px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700">{t(locale, 'admin.deleteAll')}</button>
+          )}
         </div>
 
         {/* SEARCH BAR AND FILTER */}
-        <div className="flex flex-col sm:flex-row gap-3 mb-6">
+        <div className="flex flex-col sm:flex-row gap-3 mb-4">
           <div className="relative flex-1">
             <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
             <input
               type="text"
-              placeholder="Search by contract, customer, plate..."
+              placeholder={t(locale, 'admin.searchPlaceholder')}
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
               className="w-full pl-10 pr-4 py-2.5 rounded-lg border bg-white text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-transparent"
@@ -417,12 +503,38 @@ export default function Home() {
             className="px-4 py-2.5 rounded-lg border bg-white text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400"
             style={{ borderColor: '#ccc' }}
           >
-            <option value="all">All statuses</option>
-            <option value="pending">Pending</option>
-            <option value="in_progress">In Progress</option>
-            <option value="completed">Completed</option>
+            <option value="all">{t(locale, 'admin.allStatuses')}</option>
+            <option value="pending">{t(locale, 'admin.pending')}</option>
+            <option value="in_progress">{t(locale, 'admin.inProgress')}</option>
+            <option value="completed">{t(locale, 'admin.completed')}</option>
           </select>
         </div>
+        
+        {/* SELECT ALL + BULK ACTIONS */}
+        {contracts.length > 0 && (
+          <div className="flex items-center gap-3 mb-4 px-1">
+            <label className="flex items-center gap-2 cursor-pointer text-sm text-gray-600">
+              <input
+                type="checkbox"
+                checked={selectedContracts.size === filteredContracts().length && filteredContracts().length > 0}
+                onChange={toggleSelectAll}
+                className="w-4 h-4 rounded border-gray-300 accent-yellow-500"
+              />
+              {t(locale, 'admin.selectAll')}
+            </label>
+            {selectedContracts.size > 0 && (
+              <>
+                <span className="text-xs text-gray-400">{selectedContracts.size} {t(locale, 'admin.selected')}</span>
+                <button
+                  onClick={() => setDeleteAllConfirm(true)}
+                  className="text-xs font-medium px-3 py-1.5 rounded-lg bg-red-600 text-white hover:bg-red-700"
+                >
+                  {t(locale, 'admin.delete')} ({selectedContracts.size})
+                </button>
+              </>
+            )}
+          </div>
+        )}
 
         {bulkResult && (
           <div className="bg-white rounded-xl p-4 border mb-6" style={{ borderColor: '#e5e5e5' }}>
@@ -449,6 +561,23 @@ export default function Home() {
               <div className="flex gap-2 mt-5">
                 <button type="submit" className="flex-1 text-white py-2.5 rounded-lg text-sm font-medium" style={{ backgroundColor: '#1a1a1a' }}>{t(locale, 'admin.createAndGenerate')}</button>
                 <button type="button" onClick={() => setShowCreate(false)} className="px-4 py-2.5 bg-gray-100 text-gray-700 rounded-lg text-sm">Cancel</button>
+              </div>
+            </form>
+          </div>
+        )}
+        {editContract && (
+          <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-40 p-4" onClick={() => setEditContract(null)}>
+            <form onSubmit={handleEditContract} onClick={e => e.stopPropagation()} className="bg-white rounded-2xl p-6 shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto">
+              <h2 className="font-semibold text-gray-800 mb-1 text-lg">{t(locale, 'admin.editContract')}</h2>
+              <p className="text-xs text-gray-500 mb-4">Modify contract details below.</p>
+              <div className="space-y-3">
+                {[{ key: 'contractNumber', label: t(locale, 'admin.contractNumber'), required: true },{ key: 'customerName', label: t(locale, 'admin.customerName'), required: true },{ key: 'vehiclePlate', label: t(locale, 'admin.vehiclePlate') },{ key: 'vehicleModel', label: t(locale, 'admin.vehicleModel') },{ key: 'customerEmail', label: t(locale, 'admin.customerEmail') },{ key: 'customerPhone', label: t(locale, 'admin.customerPhone') },{ key: 'vehicleColor', label: t(locale, 'admin.vehicleColor') }].map(f => (
+                  <div key={f.key}><label className="block text-xs font-medium text-gray-600 mb-1">{f.label}{f.required && '*'}</label><input type="text" value={(editContract as any)[f.key]} onChange={e => setEditContract(p => p ? { ...p, [f.key]: e.target.value } : null)} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" required={f.required} /></div>
+                ))}
+              </div>
+              <div className="flex gap-2 mt-5">
+                <button type="submit" className="flex-1 text-white py-2.5 rounded-lg text-sm font-medium" style={{ backgroundColor: '#1a1a1a' }}>{t(locale, 'admin.saveChanges')}</button>
+                <button type="button" onClick={() => setEditContract(null)} className="px-4 py-2.5 bg-gray-100 text-gray-700 rounded-lg text-sm">Cancel</button>
               </div>
             </form>
           </div>
@@ -482,15 +611,16 @@ export default function Home() {
           </div>
           {filteredContracts().length === 0 ? (
             <div className="p-8 text-center text-gray-400">
-              {contracts.length === 0 ? t(locale, 'admin.noContracts') : 'No contracts found for this search'}
+              {contracts.length === 0 ? t(locale, 'admin.noContracts') : t(locale, 'admin.noResults')}
             </div>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full">
-                <thead><tr style={{ backgroundColor: '#1a1a1a' }}>{['Contract','Client','Vehicle','Status','Photos','Tokens','Actions'].map(h => <th key={h} className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase">{h}</th>)}</tr></thead>
+                <thead><tr style={{ backgroundColor: '#1a1a1a' }}>{['','Contract','Client','Vehicle','Status','Photos','Tokens','Actions'].map(h => <th key={h} className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase">{h}</th>)}</tr></thead>
                 <tbody className="divide-y" style={{ borderColor: '#f0f0f0' }}>
                   {filteredContracts().map(c => (
-                    <tr key={c.id} className="hover:bg-gray-50">
+                    <tr key={c.id} className={'hover:bg-gray-50' + (selectedContracts.has(c.id) ? ' bg-yellow-50' : '')}>
+                      <td className="px-4 py-3"><input type="checkbox" checked={selectedContracts.has(c.id)} onChange={() => toggleSelectContract(c.id)} className="w-4 h-4 rounded border-gray-300 accent-yellow-500" /></td>
                       <td className="px-4 py-3 text-sm font-medium text-gray-800">{c.contractNumber}</td>
                       <td className="px-4 py-3 text-sm text-gray-600"><div>{c.customerName}</div>{c.customerEmail && <div className="text-xs text-gray-400">{c.customerEmail}</div>}</td>
                       <td className="px-4 py-3 text-sm text-gray-600"><div>{c.vehicleModel}</div><div className="text-xs text-gray-400">{c.vehiclePlate}</div></td>
@@ -509,7 +639,18 @@ export default function Home() {
                           {c.tokens.length === 0 && <span className="text-xs text-gray-400">No token</span>}
                         </div>
                       </td>
-                      <td className="px-4 py-3"><button onClick={() => { setTokenDialog({ contractId: c.id, contractNumber: c.contractNumber }); setGeneratedToken(null); }} className="text-xs font-medium px-2 py-1 rounded" style={{ backgroundColor: '#1a1a1a', color: '#FFCB05' }}>+ Token</button></td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-1.5">
+                          <button onClick={() => { setTokenDialog({ contractId: c.id, contractNumber: c.contractNumber }); setGeneratedToken(null); }} className="text-xs font-medium px-2 py-1 rounded" style={{ backgroundColor: '#1a1a1a', color: '#FFCB05' }}>+ Token</button>
+                          <button onClick={() => setEditContract({ id: c.id, contractNumber: c.contractNumber, customerName: c.customerName, customerEmail: c.customerEmail || '', customerPhone: c.customerPhone || '', vehiclePlate: c.vehiclePlate, vehicleModel: c.vehicleModel, vehicleColor: c.vehicleColor || '' })} className="text-xs font-medium px-2 py-1 rounded bg-blue-600 text-white">{t(locale, 'admin.edit')}</button>
+                          {deleteConfirm === c.id ? (<div className="flex items-center gap-1">
+                            <button onClick={() => handleDeleteContract(c.id)} className="text-xs font-medium px-2 py-1 rounded bg-red-600 text-white">Yes</button>
+                            <button onClick={() => setDeleteConfirm(null)} className="text-xs font-medium px-2 py-1 rounded bg-gray-300 text-gray-700">No</button>
+                          </div>) : (
+                            <button onClick={() => setDeleteConfirm(c.id)} className="text-xs font-medium px-2 py-1 rounded bg-red-100 text-red-700">{t(locale, 'admin.delete')}</button>
+                          )}
+                        </div>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -517,6 +658,28 @@ export default function Home() {
             </div>
           )}
         </div>
+
+        {/* DELETE ALL CONFIRMATION */}
+        {deleteAllConfirm && (
+          <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4" onClick={() => setDeleteAllConfirm(false)}>
+            <div onClick={e => e.stopPropagation()} className="bg-white rounded-2xl p-6 shadow-xl max-w-md w-full">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center">
+                  <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" /></svg>
+                </div>
+                <div>
+                  <h3 className="font-semibold text-gray-800 text-lg">{t(locale, 'admin.deleteAll')}</h3>
+                  <p className="text-sm text-gray-500">{selectedContracts.size > 0 ? `${selectedContracts.size} ${t(locale, 'admin.selected')}` : `${contracts.length} contracts`}</p>
+                </div>
+              </div>
+              <p className="text-sm text-gray-600 mb-6">{t(locale, 'admin.deleteAllConfirm')}</p>
+              <div className="flex gap-3">
+                <button onClick={handleDeleteSelected} className="flex-1 bg-red-600 text-white py-2.5 rounded-lg text-sm font-medium hover:bg-red-700">{t(locale, 'admin.deleteAll')}</button>
+                <button onClick={() => setDeleteAllConfirm(false)} className="flex-1 bg-gray-100 text-gray-700 py-2.5 rounded-lg text-sm font-medium">Cancel</button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
