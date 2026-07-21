@@ -166,6 +166,14 @@ const translations: Record<Locale, Record<string, string>> = {
     'admin.of': 'of',
     'admin.contractsFound': 'contracts',
     // Language
+    'admin.delete': 'Delete',
+    'admin.deleteSelected': 'Delete Selected',
+    'admin.deleteConfirmTitle': 'Delete Selected Contracts',
+    'admin.deleteConfirmMsg': 'Are you sure you want to delete the selected contracts? Their photos and tokens will be removed too. This action cannot be undone.',
+    'admin.yes': 'Yes',
+    'admin.no': 'No',
+    'admin.contractDetails': 'Contract Details',
+    'admin.optionalDetails': 'Vehicle & Contact (optional)',
     'lang.select': 'Language',
   },
   it: {
@@ -294,6 +302,12 @@ const translations: Record<Locale, Record<string, string>> = {
     'admin.noTokens': 'Nessun token',
     'admin.of': 'di',
     'admin.contractsFound': 'contratti',
+    'admin.delete': 'Elimina',
+    'admin.deleteSelected': 'Elimina Selezionati',
+    'admin.deleteConfirmTitle': 'Elimina Contratti Selezionati',
+    'admin.deleteConfirmMsg': 'Sei sicuro di voler eliminare i contratti selezionati? Anche foto e token collegati verranno rimossi. Questa azione non può essere annullata.',
+    'admin.yes': 'Sì',
+    'admin.no': 'No',
     'lang.select': 'Lingua',
   },
   mt: {
