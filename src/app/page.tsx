@@ -1,11 +1,12 @@
 'use client';
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { useSession, signIn, signOut } from 'next-auth/react';
 import { t, LOCALES, type Locale } from '@/lib/i18n';
 interface AdminContract {
 id: string; contractNumber: string; customerName: string; customerEmail: string | null; customerPhone: string | null;
 vehiclePlate: string; vehicleModel: string; vehicleColor: string | null; status: string; createdAt: string;
 tokens: Array<{ id: string; token: string; expiresAt: string; usedAt: string | null; isExpired: boolean }>;
-photosSubmitted: number; photos: Array<{ key: string; label: string; fileName: string; uploadedAt: string }>;
+photosSubmitted: number; photos: Array<{ key: string; label: string; fileName: string; uploadedAt: string; capturedAt?: string; latitude?: number | null; longitude?: number | null }>;
 }
 interface ChecklistItem {
 id: string; key: string; label: string; labelEn: string | null; description: string | null; icon: string | null;
@@ -98,10 +99,11 @@ className={'w-full text-left px-4 py-2 text-sm hover:bg-gray-50 transition-color
 );
 }
 export default function Home() {
+const { data: session, status: sessionStatus } = useSession();
 const [locale, setLocale] = useState<Locale>('it');
 // Admin panel is always in English — no language switch needed there.
 const adminLocale: Locale = 'en';
-const [mode, setMode] = useState<'loading' | 'admin' | 'customer' | 'completed'>('loading');
+const [mode, setMode] = useState<'loading' | 'admin' | 'customer' | 'completed' | 'unauthenticated'>('loading');
 const [token, setToken] = useState('');
 const [contracts, setContracts] = useState<AdminContract[]>([]);
 const [searchQuery, setSearchQuery] = useState('');
@@ -133,11 +135,36 @@ return () => {
 objectUrlsRef.current.forEach(url => URL.revokeObjectURL(url));
 };
 }, []);
+// Cached geolocation — request once per session
+const geoRef = useRef<{ latitude: number; longitude: number } | null>(null);
+const geoRequestedRef = useRef(false);
+
+const requestGeolocation = useCallback((): Promise<{ latitude: number; longitude: number } | null> => {
+  return new Promise((resolve) => {
+    if (geoRef.current) { resolve(geoRef.current); return; }
+    if (!navigator.geolocation) { resolve(null); return; }
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const geo = { latitude: pos.coords.latitude, longitude: pos.coords.longitude };
+        geoRef.current = geo;
+        resolve(geo);
+      },
+      () => resolve(null), // Permission denied or error — don't block upload
+      { enableHighAccuracy: true, timeout: 5000, maximumAge: 300000 }
+    );
+  });
+}, []);
+
 useEffect(() => {
 const hash = window.location.hash;
 if (hash.startsWith('#token=')) { const tk = hash.replace('#token=', ''); setToken(tk); setMode('customer'); validateToken(tk); }
-else { setMode('admin'); loadContracts(); }
-}, []);
+else {
+  // Admin mode: check session first
+  if (sessionStatus === 'loading') return; // Wait for session to load
+  if (sessionStatus === 'unauthenticated' || !session) { setMode('unauthenticated'); return; }
+  setMode('admin'); loadContracts();
+}
+}, [sessionStatus, session]);
 const validateToken = async (tk: string) => {
 try {
 setError('');
@@ -169,8 +196,12 @@ const toUpload = Array.from(files).slice(0, remaining);
 for (const file of toUpload) {
 setUploadingPhoto(activeKey);
 try {
+// Request geolocation once per session (non-blocking)
+if (!geoRequestedRef.current) { geoRequestedRef.current = true; requestGeolocation(); }
+const geo = geoRef.current;
 const fd = new FormData();
 fd.append('token', token); fd.append('photo', file); fd.append('requirementId', item.id);
+if (geo) { fd.append('latitude', geo.latitude.toString()); fd.append('longitude', geo.longitude.toString()); }
 const res = await fetch('/api/photos/upload', { method: 'POST', body: fd });
 const data = await res.json();
 if (!res.ok) throw new Error(data.error || 'Upload failed');
@@ -274,6 +305,31 @@ setSelectedContracts(prev => { const next = new Set(prev); if (next.has(id)) nex
 };
 /* LOADING */
 if (mode === 'loading') return (<div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: '#1a1a1a' }}><div className="animate-spin h-10 w-10 border-4 border-yellow-400 border-t-transparent rounded-full" /></div>);
+/* UNAUTHENTICATED — redirect to Microsoft 365 sign-in */
+if (mode === 'unauthenticated') return (
+  <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-900 via-gray-800 to-black px-4">
+    <div className="w-full max-w-md">
+      <div className="text-center mb-8">
+        <div className="inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-[#FFCB05] mb-4">
+          <svg viewBox="0 0 24 24" className="w-10 h-10 text-gray-900" fill="currentColor"><path d="M3 3h8.5v8.5H3V3zm9.5 0H21v8.5h-8.5V3zM3 12.5h8.5V21H3v-8.5zm9.5 0H21V21h-8.5v-8.5z"/></svg>
+        </div>
+        <h1 className="text-2xl font-bold text-white tracking-wide">HERTZ MALTA</h1>
+        <p className="text-sm text-gray-400 mt-1">Vehicle Photo Check-in — Admin</p>
+      </div>
+      <div className="bg-white rounded-2xl shadow-2xl p-8">
+        <h2 className="text-lg font-semibold text-gray-800 mb-2">Sign in to your account</h2>
+        <p className="text-sm text-gray-500 mb-6">Use your Hertz Malta Microsoft 365 credentials to access the admin dashboard.</p>
+        <button onClick={() => signIn('azure-ad', { callbackUrl: '/' })} className="w-full flex items-center justify-center gap-3 bg-[#00a4ef] hover:bg-[#0078d4] text-white font-medium py-3 px-4 rounded-lg transition-colors">
+          <svg viewBox="0 0 21 21" className="w-5 h-5" fill="currentColor"><path d="M1 1h9v9H1V1zm10 0h9v9h-9V1zM1 11h9v9H1v-9zm10 0h9v9h-9v-9z"/></svg>
+          Sign in with Microsoft
+        </button>
+        <div className="mt-6 pt-6 border-t border-gray-100">
+          <p className="text-xs text-gray-400 text-center">Only Hertz Malta / United Garage accounts are allowed. Single-tenant authentication via Microsoft Entra ID.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+);
 /* COMPLETED */
 if (mode === 'completed') return (
  <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-50 to-emerald-100 p-4">
@@ -368,6 +424,15 @@ return (
  <div className="max-w-6xl mx-auto flex items-center gap-3">
  <div className="w-10 h-10 rounded-lg flex items-center justify-center font-black text-lg" style={{ backgroundColor: '#FFCB05', color: '#1a1a1a' }}>H</div>
  <div> <h1 className="text-xl font-bold text-white tracking-wide">HERTZ MALTA</h1> <p className="text-xs text-gray-400">{t(adminLocale, 'admin.subtitle')}</p> </div>
+ {session?.user && (
+   <div className="flex items-center gap-3 ml-auto">
+     <div className="text-right">
+       <p className="text-xs text-white font-medium">{session.user.name || session.user.email}</p>
+       <button onClick={() => signOut({ callbackUrl: '/' })} className="text-xs text-gray-400 hover:text-yellow-400 transition-colors">Sign out</button>
+     </div>
+     {session.user.image && <img src={session.user.image} alt="" className="w-8 h-8 rounded-full" />}
+   </div>
+ )}
  </div>
  </div>
  <div className="max-w-6xl mx-auto px-4 py-6">
@@ -535,7 +600,27 @@ return (
                    <td className="px-4 py-3 text-sm text-gray-600"><div>{c.customerName}</div>{c.customerEmail && <div className="text-xs text-gray-400">{c.customerEmail}</div>}</td>
                    <td className="px-4 py-3 text-sm text-gray-600"><div>{c.vehicleModel}</div><div className="text-xs text-gray-400">{c.vehiclePlate}</div></td>
                    <td className="px-4 py-3"><span className={'inline-flex px-2 py-0.5 rounded-full text-xs font-medium ' + statusBadge(c.status)}>{c.status}</span></td>
-                   <td className="px-4 py-3 text-sm text-gray-600">{c.photosSubmitted}</td>
+                   <td className="px-4 py-3 text-sm text-gray-600">
+                     <span>{c.photosSubmitted}</span>
+                     {c.photos.length > 0 && (
+                       <details className="mt-1">
+                         <summary className="text-xs text-blue-500 cursor-pointer hover:text-blue-700">View details</summary>
+                         <div className="mt-1 space-y-1">
+                           {c.photos.map((p, i) => (
+                             <div key={i} className="text-xs bg-gray-50 rounded p-1.5 space-y-0.5">
+                               <div className="font-medium text-gray-700">{p.label}: {p.fileName}</div>
+                               {p.capturedAt && <div className="text-gray-500">Captured: {new Date(p.capturedAt).toLocaleString()}</div>}
+                               {p.latitude != null && p.longitude != null && (
+                                 <a href={`https://maps.google.com/?q=${p.latitude},${p.longitude}`} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:text-blue-700 underline">
+                                   Location: {p.latitude.toFixed(5)}, {p.longitude.toFixed(5)}
+                                 </a>
+                               )}
+                             </div>
+                           ))}
+                         </div>
+                       </details>
+                     )}
+                   </td>
                    <td className="px-4 py-3">
                      <div className="space-y-1.5">
                        {c.tokens.map(tk => {
