@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/lib/auth'
 import { db } from '@/lib/db'
 import { v4 as uuidv4 } from 'uuid'
 
@@ -16,6 +18,8 @@ function calculateTokenExpiry(): Date {
 
 export async function GET() {
   try {
+    const session = await getServerSession(authOptions)
+    if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     const contracts = await db.rentalContract.findMany({
       orderBy: { createdAt: 'desc' },
       include: {
@@ -29,6 +33,9 @@ export async function GET() {
         label: p.requirement.label,
         fileName: p.fileName,
         uploadedAt: p.uploadedAt,
+        capturedAt: p.capturedAt,
+        latitude: p.latitude,
+        longitude: p.longitude,
       }))
       return {
         id: c.id,
@@ -63,6 +70,8 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
+    const session = await getServerSession(authOptions)
+    if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     const body = await request.json()
     const { contractNumber, customerName, customerEmail, customerPhone, vehiclePlate, vehicleModel, vehicleColor } = body
     if (!contractNumber || !customerName) {
@@ -102,6 +111,8 @@ export async function POST(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
   try {
+    const session = await getServerSession(authOptions)
+    if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     const body = await request.json()
     const { id, contractNumber, customerName, customerEmail, customerPhone, vehiclePlate, vehicleModel, vehicleColor } = body
     if (!id) {
@@ -137,9 +148,10 @@ export async function PUT(request: NextRequest) {
   }
 }
 
-// --- ELIMINAZIONE ROBUSTA ---
 export async function DELETE(request: NextRequest) {
   try {
+    const session = await getServerSession(authOptions)
+    if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     const { searchParams } = new URL(request.url)
     const id = searchParams.get('id')
     
@@ -152,17 +164,14 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: 'Contract not found' }, { status: 404 })
     }
 
-    // 1. Elimina prima tutte le foto collegate per evitare blocchi di chiave esterna
     await db.photoSubmission.deleteMany({
       where: { contractId: id }
     })
 
-    // 2. Elimina tutti i token collegati
     await db.accessToken.deleteMany({
       where: { contractId: id }
     })
 
-    // 3. Infine, elimina il contratto stesso
     await db.rentalContract.delete({
       where: { id }
     })
