@@ -1,4 +1,6 @@
 import { NextResponse } from 'next/server'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/lib/auth'
 import { db } from '@/lib/db'
 
 const DEFAULT_REQUIREMENTS = [
@@ -8,14 +10,14 @@ const DEFAULT_REQUIREMENTS = [
   { key: 'driver_side', label: 'Driver Side', labelEn: 'Driver Side', description: 'Fotografare il lato conducente del veicolo.', orderIndex: 4, required: true, icon: 'ArrowLeft' },
 ]
 
-// Keys that should NOT exist (removed categories)
 const REMOVED_KEYS = ['interior', 'dashboard', 'fuel_level', 'damage']
 
 export async function POST() {
   try {
+    const session = await getServerSession(authOptions)
+    if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     let created = 0, skipped = 0, deleted = 0
 
-    // Remove unwanted categories
     for (const key of REMOVED_KEYS) {
       const existing = await db.photoRequirement.findUnique({ where: { key } })
       if (existing) {
@@ -24,11 +26,9 @@ export async function POST() {
       }
     }
 
-    // Create or update required categories
     for (const req of DEFAULT_REQUIREMENTS) {
       const existing = await db.photoRequirement.findUnique({ where: { key: req.key } })
       if (existing) {
-        // Update in case labels/descriptions changed
         await db.photoRequirement.update({ where: { key: req.key }, data: req })
         skipped++
       } else {
