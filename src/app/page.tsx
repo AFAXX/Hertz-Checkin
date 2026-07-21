@@ -283,7 +283,7 @@ if (mode === 'completed') return (
  </div>
  <h1 className="text-2xl font-bold text-gray-900 mb-2">{t(locale, 'confirm.title')}</h1>
  <p className="text-gray-600">{t(locale, 'confirm.subtitle')}</p>
- <div className="mt-8 p-4 bg-gray-50 rounded-xl"> <p className="text-gray-500 text-xs">Grazie per aver scelto Hertz Malta</p> </div>
+ <div className="mt-8 p-4 bg-gray-50 rounded-xl"> <p className="text-gray-500 text-xs">{t(locale, 'confirm.thanks')}</p> </div>
  </div>
  </div>
 );
