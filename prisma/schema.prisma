@@ -8,82 +8,89 @@ datasource db {
 }
 
 model RentalContract {
-  id            String     @id @default(cuid())
-  contractNumber String    @unique
-  customerName  String
-  customerEmail String?
-  customerPhone String?
-  vehiclePlate  String
-  vehicleModel  String
-  vehicleColor  String?
-  status        String     @default("pending") // pending | in_progress | completed | archived
-  archivedAt    DateTime?  // Set when contract moves to archive (after 04:00 AM next day)
-  createdAt     DateTime   @default(now())
-  updatedAt     DateTime   @updatedAt
+  id             String            @id @default(cuid())
+  contractNumber String            @unique
+  customerName   String
+  customerEmail  String?
+  customerPhone  String?
+  vehiclePlate   String
+  vehicleModel   String
+  vehicleColor   String?
+  status         String            @default("pending")
+  archivedAt     DateTime?
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
 
-  tokens        AccessToken[]
-  photos        PhotoSubmission[]
+  tokens         AccessToken[]
+  photos         PhotoSubmission[]
 }
 
 model AccessToken {
-  id            String   @id @default(cuid())
-  token         String   @unique
-  contractId    String
-  expiresAt     DateTime
-  usedAt        DateTime?
-  createdAt     DateTime @default(now())
+  id         String   @id @default(cuid())
+  token      String   @unique
+  contractId String
+  expiresAt  DateTime
+  usedAt     DateTime?
+  createdAt  DateTime @default(now())
 
-  contract      RentalContract @relation(fields: [contractId], references: [id], onDelete: Cascade)
+  contract   RentalContract @relation(fields: [contractId], references: [id], onDelete: Cascade)
 }
 
 model PhotoRequirement {
-  id          String   @id @default(cuid())
-  key         String   @unique  // e.g. "front", "rear", "left_side"
-  label       String            // e.g. "Vista anteriore"
-  labelEn     String?           // English label
-  description String?           // Brief instructions
-  orderIndex  Int     @default(0)
-  required    Boolean @default(true)
-  icon        String?           // Lucide icon name
+  id           String            @id @default(cuid())
+  key          String            @unique
+  label        String
+  labelEn      String?
+  description  String?
+  orderIndex   Int               @default(0)
+  required     Boolean           @default(true)
+  icon         String?
 
-  submissions PhotoSubmission[]
+  submissions  PhotoSubmission[]
 }
 
 model PhotoSubmission {
-  id            String   @id @default(cuid())
-  contractId    String
+  id           String    @id @default(cuid())
+  contractId   String
   requirementId String
-  fileName      String
-  fileSize      Int
-  mimeType      String
-  // Local storage path (during development / fallback)
-  localPath     String?
-  // Microsoft Graph API upload URL / item ID
-  graphItemId   String?
-  graphDriveId  String?
-  // Timestamp & Geolocation
-  capturedAt    DateTime @default(now())  // ISO 8601 timestamp generated server-side on upload
-  latitude      Float?                     // GPS latitude from browser geolocation
-  longitude     Float?                     // GPS longitude from browser geolocation
-  uploadedAt    DateTime @default(now())
+  fileName     String
+  fileSize     Int
+  mimeType     String
+  localPath    String?
+  graphItemId  String?
+  graphDriveId String?
+  capturedAt   DateTime  @default(now())
+  latitude     Float?
+  longitude    Float?
+  uploadedAt   DateTime  @default(now())
 
-  contract      RentalContract     @relation(fields: [contractId], references: [id], onDelete: Cascade)
-  requirement   PhotoRequirement   @relation(fields: [requirementId], references: [id], onDelete: Cascade)
+  contract     RentalContract   @relation(fields: [contractId], references: [id], onDelete: Cascade)
+  requirement  PhotoRequirement @relation(fields: [requirementId], references: [id], onDelete: Cascade)
 }
 
-// NextAuth.js models for Microsoft 365 login
+// --- TABELLE PER IL LOGIN MICROSOFT (NEXTAUTH) ---
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String?   @unique
+  emailVerified DateTime?
+  image         String?
+  accounts      Account[]
+  sessions      Session[]
+}
+
 model Account {
   id                String  @id @default(cuid())
   userId            String
   type              String
   provider          String
   providerAccountId String
-  refresh_token     String?
-  access_token      String?
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
   expires_at        Int?
   token_type        String?
   scope             String?
-  id_token          String?
+  id_token          String? @db.Text
   session_state     String?
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -96,18 +103,7 @@ model Session {
   sessionToken String   @unique
   userId       String
   expires      DateTime
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-}
-
-model User {
-  id            String    @id @default(cuid())
-  name          String?
-  email         String?   @unique
-  emailVerified DateTime?
-  image         String?
-  accounts      Account[]
-  sessions      Session[]
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model VerificationToken {
