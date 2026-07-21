@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/lib/auth'
 import { db } from '@/lib/db'
 import { v4 as uuidv4 } from 'uuid'
 import * as XLSX from 'xlsx'
@@ -86,6 +88,8 @@ function findMapping(header: string): keyof RowData | null {
 
 export async function POST(request: NextRequest) {
   try {
+    const session = await getServerSession(authOptions)
+    if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     const formData = await request.formData()
     const file = formData.get('file') as File | null
 
@@ -280,5 +284,35 @@ export async function POST(request: NextRequest) {
       { error: `Failed to process file: ${msg}` },
       { status: 500 }
     )
+  }
+}
+
+
+////////////////////////////////////////////////////////////
+FILE 14: src/app/api/token/submissions/route.ts
+PERCORSO: src/app/api/token/submissions/route.ts
+////////////////////////////////////////////////////////////
+
+import { NextRequest, NextResponse } from 'next/server';
+import { db } from '@/lib/db';
+
+export async function GET(request: NextRequest) {
+  try {
+    const token = request.nextUrl.searchParams.get('token');
+    if (!token) return NextResponse.json({ error: 'Missing token' }, { status: 400 });
+
+    const accessToken = await db.accessToken.findUnique({ where: { token }, include: { contract: true } });
+    if (!accessToken) return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
+
+    const submissions = await db.photoSubmission.findMany({
+      where: { contractId: accessToken.contractId },
+      select: { id: true, localPath: true, requirementId: true, fileName: true, uploadedAt: true, capturedAt: true, latitude: true, longitude: true },
+      orderBy: { uploadedAt: 'asc' },
+    });
+
+    return NextResponse.json({ submissions });
+  } catch (error) {
+    console.error('Failed to load submissions:', error);
+    return NextResponse.json({ error: 'Failed to load submissions' }, { status: 500 });
   }
 }
