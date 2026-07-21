@@ -16,9 +16,16 @@ export const authOptions: NextAuthOptions = {
       }
       return session
     },
+    async jwt({ token, account }) {
+      if (account) {
+        token.accessToken = account.access_token
+      }
+      return token
+    },
   },
   pages: {
     signIn: '/auth/signin',
+    error: '/auth/signin',
   },
   session: {
     strategy: 'jwt',
