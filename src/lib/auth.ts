@@ -15,18 +15,19 @@ export const authOptions: NextAuthOptions = {
   ],
   callbacks: {
     async signIn({ user, account, profile }) {
-      // Single-tenant enforcement: only allow users from the configured tenant
-      const allowedTenant = process.env.AZURE_AD_TENANT_ID
-      if (account?.provider === 'azure-ad' && allowedTenant) {
-        return true
-      }
       return true
     },
-    async session({ session, user }) {
-      if (session.user && user) {
-        session.user.id = user.id
+    async session({ session, token }) {
+      if (session.user && token) {
+        session.user.id = token.sub || ''
       }
       return session
+    },
+    async jwt({ token, user, account }) {
+      if (user) {
+        token.sub = user.id
+      }
+      return token
     },
   },
   pages: {
@@ -34,7 +35,7 @@ export const authOptions: NextAuthOptions = {
     error: '/auth/signin',
   },
   session: {
-    strategy: 'database',
+    strategy: 'jwt',
     maxAge: 8 * 60 * 60, // 8 hours
   },
   secret: process.env.NEXTAUTH_SECRET,
