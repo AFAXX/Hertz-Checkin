@@ -3,6 +3,9 @@ ALTER TABLE "PhotoSubmission" ADD COLUMN "capturedAt" TIMESTAMP(3) NOT NULL DEFA
 ALTER TABLE "PhotoSubmission" ADD COLUMN "latitude" DOUBLE PRECISION;
 ALTER TABLE "PhotoSubmission" ADD COLUMN "longitude" DOUBLE PRECISION;
 
+-- AlterTable: add archivedAt to RentalContract
+ALTER TABLE "RentalContract" ADD COLUMN "archivedAt" TIMESTAMP(3);
+
 -- CreateTable: Account (NextAuth)
 CREATE TABLE "Account" (
     "id" TEXT NOT NULL,

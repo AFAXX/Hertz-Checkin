@@ -16,7 +16,8 @@ model RentalContract {
   vehiclePlate  String
   vehicleModel  String
   vehicleColor  String?
-  status        String     @default("pending") // pending | in_progress | completed
+  status        String     @default("pending") // pending | in_progress | completed | archived
+  archivedAt    DateTime?  // Set when contract moves to archive (after 04:00 AM next day)
   createdAt     DateTime   @default(now())
   updatedAt     DateTime   @updatedAt
 
