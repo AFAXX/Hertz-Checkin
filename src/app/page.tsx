@@ -99,6 +99,8 @@ className={'w-full text-left px-4 py-2 text-sm hover:bg-gray-50 transition-color
 }
 export default function Home() {
 const [locale, setLocale] = useState<Locale>('it');
+// Admin panel is always in English — no language switch needed there.
+const adminLocale: Locale = 'en';
 const [mode, setMode] = useState<'loading' | 'admin' | 'customer' | 'completed'>('loading');
 const [token, setToken] = useState('');
 const [contracts, setContracts] = useState<AdminContract[]>([]);
@@ -362,22 +364,19 @@ if (mode === 'customer') return (
 /* ADMIN */
 return (
  <div className="min-h-screen" style={{ backgroundColor: '#f5f5f0' }}>
- <div className="fixed top-3 right-3 z-50">
- <LanguageSelector locale={locale} setLocale={setLocale} />
- </div>
  <div className="px-6 py-5" style={{ backgroundColor: '#1a1a1a' }}>
  <div className="max-w-6xl mx-auto flex items-center gap-3">
  <div className="w-10 h-10 rounded-lg flex items-center justify-center font-black text-lg" style={{ backgroundColor: '#FFCB05', color: '#1a1a1a' }}>H</div>
- <div> <h1 className="text-xl font-bold text-white tracking-wide">HERTZ MALTA</h1> <p className="text-xs text-gray-400">{t(locale, 'admin.subtitle')}</p> </div>
+ <div> <h1 className="text-xl font-bold text-white tracking-wide">HERTZ MALTA</h1> <p className="text-xs text-gray-400">{t(adminLocale, 'admin.subtitle')}</p> </div>
  </div>
  </div>
  <div className="max-w-6xl mx-auto px-4 py-6">
  <div className="grid grid-cols-4 gap-3 mb-6">
 {[
-{ label: t(locale, 'admin.totalContracts'), value: contracts.length, bg: '#fff', bc: '#e5e5e5', c: '#1a1a1a' },
-{ label: t(locale, 'admin.pending'), value: contracts.filter(c => c.status === 'pending').length, bg: '#fff', bc: '#e5e5e5', c: '#666' },
-{ label: t(locale, 'admin.inProgress'), value: contracts.filter(c => c.status === 'in_progress').length, bg: '#FFCB05', bc: '#e6b800', c: '#1a1a1a' },
-{ label: t(locale, 'admin.completed'), value: contracts.filter(c => c.status === 'completed').length, bg: '#22c55e', bc: '#16a34a', c: '#fff' },
+{ label: t(adminLocale, 'admin.totalContracts'), value: contracts.length, bg: '#fff', bc: '#e5e5e5', c: '#1a1a1a' },
+{ label: t(adminLocale, 'admin.pending'), value: contracts.filter(c => c.status === 'pending').length, bg: '#fff', bc: '#e5e5e5', c: '#666' },
+{ label: t(adminLocale, 'admin.inProgress'), value: contracts.filter(c => c.status === 'in_progress').length, bg: '#FFCB05', bc: '#e6b800', c: '#1a1a1a' },
+{ label: t(adminLocale, 'admin.completed'), value: contracts.filter(c => c.status === 'completed').length, bg: '#22c55e', bc: '#16a34a', c: '#fff' },
 ].map(s => (
  <div key={s.label} className="rounded-xl p-4 shadow-sm" style={{ backgroundColor: s.bg, border: '1px solid ' + s.bc }}>
  <p className="text-2xl font-bold" style={{ color: s.c }}>{s.value}</p>
@@ -386,15 +385,15 @@ return (
 ))}
  </div>
  <div className="flex flex-wrap gap-3 mb-6">
- <button onClick={() => setShowCreate(true)} className="text-sm font-medium px-4 py-2 rounded-lg text-white" style={{ backgroundColor: '#1a1a1a' }}>+ {t(locale, 'admin.newContract')}</button>
+ <button onClick={() => setShowCreate(true)} className="text-sm font-medium px-4 py-2 rounded-lg text-white" style={{ backgroundColor: '#1a1a1a' }}>+ {t(adminLocale, 'admin.newContract')}</button>
  <label className="cursor-pointer text-sm font-medium px-4 py-2 rounded-lg border bg-white flex items-center gap-2" style={{ borderColor: '#ccc', color: '#333' }}>
-{uploading ? t(locale, 'admin.processing') : t(locale, 'admin.bulkUpload')}
+{uploading ? t(adminLocale, 'admin.processing') : t(adminLocale, 'admin.bulkUpload')}
  <input type="file" accept=".xlsx,.xls,.csv" onChange={handleBulkUpload} className="hidden" disabled={uploading} />
  </label>
- <button onClick={loadContracts} className="text-sm font-medium px-4 py-2 rounded-lg border bg-white" style={{ borderColor: '#ccc', color: '#333' }}>{t(locale, 'admin.refresh')}</button>
+ <button onClick={loadContracts} className="text-sm font-medium px-4 py-2 rounded-lg border bg-white" style={{ borderColor: '#ccc', color: '#333' }}>{t(adminLocale, 'admin.refresh')}</button>
  {selectedContracts.size > 0 && (
  <button onClick={() => setDeleteAllConfirm(true)} className="text-sm font-medium px-4 py-2 rounded-lg bg-red-600 text-white shadow-sm hover:bg-red-700 ml-auto">
- Elimina Selezionati ({selectedContracts.size})
+ {t(adminLocale, 'admin.deleteSelected')} ({selectedContracts.size})
  </button>
  )}
  </div>
@@ -404,7 +403,7 @@ return (
          <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
          <input
            type="text"
-           placeholder="Cerca per contratto, cliente, targa..."
+           placeholder={t(adminLocale, 'admin.searchPlaceholder')}
            value={searchQuery}
            onChange={e => setSearchQuery(e.target.value)}
            className="w-full pl-10 pr-4 py-2.5 rounded-lg border bg-white text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-transparent"
@@ -422,7 +421,7 @@ return (
          className="px-4 py-2.5 rounded-lg border bg-white text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400"
          style={{ borderColor: '#ccc' }}
        >
-         <option value="all">Tutti gli stati</option>
+         <option value="all">{t(adminLocale, 'admin.allStatuses')}</option>
          <option value="pending">Pending</option>
          <option value="in_progress">In Progress</option>
          <option value="completed">Completed</option>
@@ -430,29 +429,58 @@ return (
      </div>
      {bulkResult && (
        <div className="bg-white rounded-xl p-4 border mb-6" style={{ borderColor: '#e5e5e5' }}>
-         <h3 className="font-semibold text-gray-800 mb-2">{t(locale, 'admin.uploadSuccess')}</h3>
-         <p className="text-sm text-gray-600">{bulkResult.summary.created} {t(locale, 'admin.created')}, {bulkResult.summary.skipped} {t(locale, 'admin.skipped')}, {bulkResult.summary.errors} {t(locale, 'admin.errors')}</p>
-         <details className="mt-2"><summary className="text-xs text-gray-500 cursor-pointer">{t(locale, 'admin.results')}</summary>
+         <h3 className="font-semibold text-gray-800 mb-2">{t(adminLocale, 'admin.uploadSuccess')}</h3>
+         <p className="text-sm text-gray-600">{bulkResult.summary.created} {t(adminLocale, 'admin.created')}, {bulkResult.summary.skipped} {t(adminLocale, 'admin.skipped')}, {bulkResult.summary.errors} {t(adminLocale, 'admin.errors')}</p>
+         <details className="mt-2"><summary className="text-xs text-gray-500 cursor-pointer">{t(adminLocale, 'admin.results')}</summary>
            <div className="mt-2 max-h-40 overflow-y-auto text-xs space-y-1">
              {bulkResult.results?.map((r: any, i: number) => <div key={i} className={r.status === 'error' ? 'text-red-600' : r.status === 'skipped' ? 'text-yellow-600' : 'text-green-600'}>Row {r.row}: {r.contractNumber} - {r.customerName} [{r.status}]{r.error && ' - ' + r.error}</div>)}
            </div>
          </details>
-         <button onClick={() => setBulkResult(null)} className="mt-2 text-xs text-gray-400">Chiudi</button>
+         <button onClick={() => setBulkResult(null)} className="mt-2 text-xs text-gray-400">{t(adminLocale, 'admin.close')}</button>
        </div>
      )}
      {showCreate && (
        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-40 p-4" onClick={() => setShowCreate(false)}>
-         <form onSubmit={handleCreateContract} onClick={e => e.stopPropagation()} className="bg-white rounded-2xl p-6 shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto">
-           <h2 className="font-semibold text-gray-800 mb-1 text-lg">{t(locale, 'admin.newContractTitle')}</h2>
-           <p className="text-xs text-gray-500 mb-4">{t(locale, 'admin.newContractDesc')}</p>
-           <div className="space-y-3">
-             {[{ key: 'contractNumber', label: t(locale, 'admin.contractNumber'), required: true },{ key: 'customerName', label: t(locale, 'admin.customerName'), required: true },{ key: 'vehiclePlate', label: t(locale, 'admin.vehiclePlate') },{ key: 'vehicleModel', label: t(locale, 'admin.vehicleModel') },{ key: 'customerEmail', label: t(locale, 'admin.customerEmail') },{ key: 'customerPhone', label: t(locale, 'admin.customerPhone') },{ key: 'vehicleColor', label: t(locale, 'admin.vehicleColor') }].map(f => (
-               <div key={f.key}><label className="block text-xs font-medium text-gray-600 mb-1">{f.label}{f.required && '*'}</label><input type="text" value={(createForm as any)[f.key]} onChange={e => setCreateForm(p => ({ ...p, [f.key]: e.target.value }))} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" required={f.required} /></div>
-             ))}
+         <form onSubmit={handleCreateContract} onClick={e => e.stopPropagation()} className="bg-white rounded-2xl shadow-xl max-w-md w-full max-h-[90vh] overflow-hidden flex flex-col">
+           <div className="px-6 py-5 flex items-start justify-between" style={{ backgroundColor: '#1a1a1a' }}>
+             <div className="flex items-center gap-3">
+               <div className="w-9 h-9 rounded-lg flex items-center justify-center font-black text-base flex-shrink-0" style={{ backgroundColor: '#FFCB05', color: '#1a1a1a' }}>+</div>
+               <div>
+                 <h2 className="font-semibold text-white text-base">{t(adminLocale, 'admin.newContractTitle')}</h2>
+                 <p className="text-xs mt-0.5" style={{ color: '#FFCB05' }}>{t(adminLocale, 'admin.newContractDesc')}</p>
+               </div>
+             </div>
+             <button type="button" onClick={() => setShowCreate(false)} className="text-gray-400 hover:text-white flex-shrink-0 ml-2">
+               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
+             </button>
            </div>
-           <div className="flex gap-2 mt-5">
-             <button type="submit" className="flex-1 text-white py-2.5 rounded-lg text-sm font-medium" style={{ backgroundColor: '#1a1a1a' }}>{t(locale, 'admin.createAndGenerate')}</button>
-             <button type="button" onClick={() => setShowCreate(false)} className="px-4 py-2.5 bg-gray-100 text-gray-700 rounded-lg text-sm">Cancel</button>
+           <div className="px-6 py-5 overflow-y-auto space-y-5">
+             <div>
+               <p className="text-xs font-semibold uppercase tracking-wide mb-2" style={{ color: '#e6b800' }}>{t(adminLocale, 'admin.contractDetails')}</p>
+               <div className="space-y-3">
+                 {[{ key: 'contractNumber', label: t(adminLocale, 'admin.contractNumber'), required: true },{ key: 'customerName', label: t(adminLocale, 'admin.customerName'), required: true }].map(f => (
+                   <div key={f.key}>
+                     <label className="block text-xs font-medium text-gray-600 mb-1">{f.label}{f.required && <span style={{ color: '#e6b800' }}> *</span>}</label>
+                     <input type="text" value={(createForm as any)[f.key]} onChange={e => setCreateForm(p => ({ ...p, [f.key]: e.target.value }))} className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-transparent" required={f.required} />
+                   </div>
+                 ))}
+               </div>
+             </div>
+             <div>
+               <p className="text-xs font-semibold uppercase tracking-wide mb-2 text-gray-400">{t(adminLocale, 'admin.optionalDetails')}</p>
+               <div className="grid grid-cols-2 gap-3">
+                 {[{ key: 'vehiclePlate', label: t(adminLocale, 'admin.vehiclePlate') },{ key: 'vehicleModel', label: t(adminLocale, 'admin.vehicleModel') },{ key: 'vehicleColor', label: t(adminLocale, 'admin.vehicleColor') },{ key: 'customerEmail', label: t(adminLocale, 'admin.customerEmail') },{ key: 'customerPhone', label: t(adminLocale, 'admin.customerPhone') }].map(f => (
+                   <div key={f.key} className={f.key === 'customerEmail' ? 'col-span-2' : ''}>
+                     <label className="block text-xs font-medium text-gray-600 mb-1">{f.label}</label>
+                     <input type="text" value={(createForm as any)[f.key]} onChange={e => setCreateForm(p => ({ ...p, [f.key]: e.target.value }))} className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-transparent" />
+                   </div>
+                 ))}
+               </div>
+             </div>
+           </div>
+           <div className="flex gap-2 px-6 py-4 border-t" style={{ borderColor: '#e5e5e5', backgroundColor: '#fafaf5' }}>
+             <button type="button" onClick={() => setShowCreate(false)} className="px-4 py-2.5 bg-white border rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50" style={{ borderColor: '#ccc' }}>{t(adminLocale, 'admin.cancel')}</button>
+             <button type="submit" className="flex-1 text-sm font-medium py-2.5 rounded-lg" style={{ backgroundColor: '#FFCB05', color: '#1a1a1a' }}>{t(adminLocale, 'admin.createAndGenerate')}</button>
            </div>
          </form>
        </div>
@@ -461,16 +489,16 @@ return (
        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-40 p-4" onClick={() => { setGeneratedToken(null); setTokenDialog(null); }}>
          <div onClick={e => e.stopPropagation()} className="bg-white rounded-2xl p-6 shadow-xl max-w-md w-full">
            {generatedToken ? (<>
-             <h2 className="font-semibold text-gray-800 mb-1 text-lg">{t(locale, 'admin.linkGenerated')}</h2>
+             <h2 className="font-semibold text-gray-800 mb-1 text-lg">{t(adminLocale, 'admin.linkGenerated')}</h2>
              <div className="rounded-xl p-3 break-all text-sm font-mono mb-4" style={{ backgroundColor: '#f5f5f0' }}>{window.location.origin}{generatedToken.link}</div>
              <div className="flex gap-2">
-               <button onClick={() => copyToClip(window.location.origin + generatedToken.link, 'dialog')} className="flex-1 text-white py-2.5 rounded-lg text-sm font-medium" style={{ backgroundColor: '#1a1a1a' }}>{copied === 'dialog' ? 'Copiato!' : t(locale, 'admin.copyLink')}</button>
-               <button onClick={() => { setGeneratedToken(null); setTokenDialog(null); }} className="px-4 py-2.5 bg-gray-100 text-gray-700 rounded-lg text-sm">Chiudi</button>
+               <button onClick={() => copyToClip(window.location.origin + generatedToken.link, 'dialog')} className="flex-1 text-white py-2.5 rounded-lg text-sm font-medium" style={{ backgroundColor: '#1a1a1a' }}>{copied === 'dialog' ? t(adminLocale, 'admin.copied') : t(adminLocale, 'admin.copyLink')}</button>
+               <button onClick={() => { setGeneratedToken(null); setTokenDialog(null); }} className="px-4 py-2.5 bg-gray-100 text-gray-700 rounded-lg text-sm">{t(adminLocale, 'admin.close')}</button>
              </div>
            </>) : tokenDialog ? (<>
-             <h2 className="font-semibold text-gray-800 mb-4">{t(locale, 'admin.generateToken')}</h2>
-             <p className="text-sm text-gray-600 mb-4">Contratto: <strong>{tokenDialog.contractNumber}</strong></p>
-             <button onClick={() => handleGenerateToken(tokenDialog.contractId)} className="w-full text-white py-2.5 rounded-lg text-sm font-medium" style={{ backgroundColor: '#1a1a1a' }}>{t(locale, 'admin.generate')}</button>
+             <h2 className="font-semibold text-gray-800 mb-4">{t(adminLocale, 'admin.generateToken')}</h2>
+             <p className="text-sm text-gray-600 mb-4">{t(adminLocale, 'admin.contractLabel')} <strong>{tokenDialog.contractNumber}</strong></p>
+             <button onClick={() => handleGenerateToken(tokenDialog.contractId)} className="w-full text-white py-2.5 rounded-lg text-sm font-medium" style={{ backgroundColor: '#1a1a1a' }}>{t(adminLocale, 'admin.generate')}</button>
            </>) : null}
          </div>
        </div>
@@ -478,15 +506,15 @@ return (
      <div className="bg-white rounded-xl shadow-sm overflow-hidden" style={{ border: '1px solid #e5e5e5' }}>
        <div className="px-6 py-4 border-b" style={{ borderColor: '#e5e5e5', backgroundColor: '#fafaf5' }}>
          <div className="flex items-center justify-between">
-           <h2 className="font-semibold text-gray-800">{t(locale, 'admin.contracts')}</h2>
+           <h2 className="font-semibold text-gray-800">{t(adminLocale, 'admin.contracts')}</h2>
            {(searchQuery || statusFilter !== 'all') && (
-             <span className="text-xs text-gray-500">{filteredContracts().length} di {contracts.length} contratti</span>
+             <span className="text-xs text-gray-500">{filteredContracts().length} {t(adminLocale, 'admin.of')} {contracts.length} {t(adminLocale, 'admin.contractsFound')}</span>
            )}
          </div>
        </div>
        {filteredContracts().length === 0 ? (
          <div className="p-8 text-center text-gray-400">
-           {contracts.length === 0 ? t(locale, 'admin.noContracts') : 'Nessun contratto trovato per la ricerca'}
+           {contracts.length === 0 ? t(adminLocale, 'admin.noContracts') : t(adminLocale, 'admin.noSearchResults')}
          </div>
        ) : (
          <div className="overflow-x-auto">
@@ -514,11 +542,11 @@ return (
                          const link = window.location.origin + '/#token=' + tk.token;
                          return (<div key={tk.id} className="flex items-center gap-1.5">
                            <span className={'w-1.5 h-1.5 rounded-full ' + (tk.usedAt ? 'bg-gray-300' : tk.isExpired ? 'bg-red-400' : 'bg-green-400')} />
-                           <span className="text-xs text-gray-500">{tk.usedAt ? 'Usato' : tk.isExpired ? 'Scaduto' : 'Attivo'}</span>
-                           <button onClick={() => copyToClip(link, tk.id)} className="text-xs px-1.5 py-0.5 rounded font-medium" style={{ backgroundColor: copied === tk.id ? '#22c55e' : '#FFCB05', color: copied === tk.id ? '#fff' : '#1a1a1a' }}>{copied === tk.id ? 'OK' : 'Copia'}</button>
+                           <span className="text-xs text-gray-500">{tk.usedAt ? t(adminLocale, 'admin.tokenUsed') : tk.isExpired ? t(adminLocale, 'admin.tokenExpired') : t(adminLocale, 'admin.tokenActive')}</span>
+                           <button onClick={() => copyToClip(link, tk.id)} className="text-xs px-1.5 py-0.5 rounded font-medium" style={{ backgroundColor: copied === tk.id ? '#22c55e' : '#FFCB05', color: copied === tk.id ? '#fff' : '#1a1a1a' }}>{copied === tk.id ? 'OK' : t(adminLocale, 'admin.copy')}</button>
                          </div>);
                        })}
-                       {c.tokens.length === 0 && <span className="text-xs text-gray-400">Nessun token</span>}
+                       {c.tokens.length === 0 && <span className="text-xs text-gray-400">{t(adminLocale, 'admin.noTokens')}</span>}
                      </div>
                    </td>
                    <td className="px-4 py-3">
@@ -526,11 +554,11 @@ return (
                        <button onClick={() => { setTokenDialog({ contractId: c.id, contractNumber: c.contractNumber }); setGeneratedToken(null); }} className="text-xs font-medium px-2 py-1 rounded" style={{ backgroundColor: '#1a1a1a', color: '#FFCB05' }}>+ Token</button>
                        {deleteConfirm === c.id ? (
                          <div className="flex items-center gap-1">
-                           <button onClick={() => handleDeleteContract(c.id)} className="text-xs font-medium px-2 py-1 rounded bg-red-600 text-white hover:bg-red-700">Sì</button>
-                           <button onClick={() => setDeleteConfirm(null)} className="text-xs font-medium px-2 py-1 rounded bg-gray-200 text-gray-700 hover:bg-gray-300">No</button>
+                           <button onClick={() => handleDeleteContract(c.id)} className="text-xs font-medium px-2 py-1 rounded bg-red-600 text-white hover:bg-red-700">{t(adminLocale, 'admin.yes')}</button>
+                           <button onClick={() => setDeleteConfirm(null)} className="text-xs font-medium px-2 py-1 rounded bg-gray-200 text-gray-700 hover:bg-gray-300">{t(adminLocale, 'admin.no')}</button>
                          </div>
                        ) : (
-                         <button onClick={() => setDeleteConfirm(c.id)} className="text-xs font-medium px-2 py-1 rounded bg-red-50 text-red-700 hover:bg-red-100 border border-red-200">Elimina</button>
+                         <button onClick={() => setDeleteConfirm(c.id)} className="text-xs font-medium px-2 py-1 rounded bg-red-50 text-red-700 hover:bg-red-100 border border-red-200">{t(adminLocale, 'admin.delete')}</button>
                        )}
                      </div>
                    </td>
@@ -549,14 +577,14 @@ return (
                <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"/></svg>
              </div>
              <div>
-               <h3 className="font-semibold text-gray-800 text-lg">Elimina Selezionati</h3>
-               <p className="text-sm text-gray-500">{selectedContracts.size} contratti</p>
+               <h3 className="font-semibold text-gray-800 text-lg">{t(adminLocale, 'admin.deleteConfirmTitle')}</h3>
+               <p className="text-sm text-gray-500">{selectedContracts.size} {t(adminLocale, 'admin.contractsFound')}</p>
              </div>
            </div>
-           <p className="text-sm text-gray-600 mb-6">Sei sicuro di voler eliminare i contratti selezionati? Questa azione non può essere annullata.</p>
+           <p className="text-sm text-gray-600 mb-6">{t(adminLocale, 'admin.deleteConfirmMsg')}</p>
            <div className="flex gap-3">
-             <button onClick={handleDeleteSelected} className="flex-1 bg-red-600 text-white py-2.5 rounded-lg text-sm font-medium hover:bg-red-700">Elimina Selezionati</button>
-             <button onClick={() => setDeleteAllConfirm(false)} className="flex-1 bg-gray-100 text-gray-700 py-2.5 rounded-lg text-sm font-medium hover:bg-gray-200">Chiudi</button>
+             <button onClick={handleDeleteSelected} className="flex-1 bg-red-600 text-white py-2.5 rounded-lg text-sm font-medium hover:bg-red-700">{t(adminLocale, 'admin.deleteSelected')}</button>
+             <button onClick={() => setDeleteAllConfirm(false)} className="flex-1 bg-gray-100 text-gray-700 py-2.5 rounded-lg text-sm font-medium hover:bg-gray-200">{t(adminLocale, 'admin.close')}</button>
            </div>
          </div>
        </div>
