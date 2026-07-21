@@ -15,6 +15,16 @@ export async function POST(request: NextRequest) {
     const file = formData.get('photo') as File | null;
     const requirementId = formData.get('requirementId') as string;
 
+    // Geolocation data from client (optional — never block upload if missing)
+    const latitudeStr = formData.get('latitude') as string | null;
+    const longitudeStr = formData.get('longitude') as string | null;
+    const latitude = latitudeStr ? parseFloat(latitudeStr) : null;
+    const longitude = longitudeStr ? parseFloat(longitudeStr) : null;
+
+    // Validate lat/lng if provided
+    const validLat = (latitude !== null && !isNaN(latitude) && latitude >= -90 && latitude <= 90) ? latitude : null;
+    const validLng = (longitude !== null && !isNaN(longitude) && longitude >= -180 && longitude <= 180) ? longitude : null;
+
     if (!token || !file || !requirementId) {
       return NextResponse.json({ error: 'Missing required fields: token, photo, requirementId' }, { status: 400 });
     }
@@ -60,13 +70,39 @@ export async function POST(request: NextRequest) {
       localPath = '/uploads/' + accessToken.contract.contractNumber + '/' + fileName;
     }
 
+    // Generate server-side timestamp (capturedAt) at the moment of upload
+    const capturedAt = new Date();
+
     const submission = await db.photoSubmission.create({
-      data: { contractId: accessToken.contractId, requirementId, fileName, fileSize: file.size, mimeType: file.type, localPath, graphItemId, graphDriveId },
+      data: {
+        contractId: accessToken.contractId,
+        requirementId,
+        fileName,
+        fileSize: file.size,
+        mimeType: file.type,
+        localPath,
+        graphItemId,
+        graphDriveId,
+        capturedAt,
+        latitude: validLat,
+        longitude: validLng,
+      },
     });
 
     await db.rentalContract.update({ where: { id: accessToken.contractId }, data: { status: 'in_progress' } });
 
-    return NextResponse.json({ success: true, submission: { id: submission.id, fileName: submission.fileName, localPath: submission.localPath }, photoCount: existingCount + 1 });
+    return NextResponse.json({
+      success: true,
+      submission: {
+        id: submission.id,
+        fileName: submission.fileName,
+        localPath: submission.localPath,
+        capturedAt: submission.capturedAt.toISOString(),
+        latitude: submission.latitude,
+        longitude: submission.longitude,
+      },
+      photoCount: existingCount + 1,
+    });
   } catch (error) {
     console.error('Photo upload error:', error);
     const msg = error instanceof Error ? error.message : 'Unknown error';
