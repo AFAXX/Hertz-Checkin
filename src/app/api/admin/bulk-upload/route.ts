@@ -280,6 +280,16 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       )
     }
+    // Detect Prisma schema mismatch (archivedAt column missing) and return a helpful message
+    if (msg.includes('archivedAt') && msg.includes('does not exist')) {
+      return NextResponse.json(
+        {
+          error: 'Database migration missing. The "archivedAt" column does not exist on RentalContract table. Run `npx prisma migrate deploy` locally with DATABASE_URL pointing to production Neon, OR execute prisma/migrations/20260721_add_geo_and_auth/migration.sql directly in the Neon SQL editor, then redeploy.',
+          migrationRequired: true,
+        },
+        { status: 500 }
+      )
+    }
     return NextResponse.json(
       { error: `Failed to process file: ${msg}` },
       { status: 500 }

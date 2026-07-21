@@ -1,0 +1,12 @@
+{
+  "crons": [
+    {
+      "path": "/api/admin/cron/auto-archive",
+      "schedule": "0 2 * * *"
+    },
+    {
+      "path": "/api/admin/cron/auto-archive",
+      "schedule": "0 3 * * *"
+    }
+  ]
+}

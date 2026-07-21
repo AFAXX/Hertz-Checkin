@@ -5,56 +5,63 @@ import { db } from '@/lib/db'
 import { v4 as uuidv4 } from 'uuid'
 
 /**
- * Auto-archive logic:
- * Active window: 08:00 AM to 04:00 AM next day (Malta time).
- * After 04:00 AM, any contract created the previous day that is still pending/in_progress
- * gets auto-archived (status = 'archived', archivedAt = now).
- * Completed contracts are also archived after 04:00 AM of the next day.
+ * Auto-archive logic — revised per Hertz Malta workday rules.
+ *
+ * Workday = 08:00 AM → 04:00 AM next day (Malta time).
+ * At 04:00 AM Malta time, the workday ends. ALL active (non-archived) contracts
+ * created BEFORE today's 04:00 AM must be moved to the archive, regardless of status
+ * (pending / in_progress / completed).
+ *
+ * This function is idempotent: running it multiple times produces the same result,
+ * because already-archived contracts (archivedAt != null) are excluded by the WHERE clause.
+ *
+ * It is called from two places:
+ *   1. On every GET /api/admin/contracts (on-demand, when admin loads the dashboard)
+ *   2. By the Vercel cron job at /api/admin/cron/auto-archive (scheduled, reliable)
+ *
+ * Malta timezone: Europe/Malta (UTC+1 standard, UTC+2 DST). We compute Malta time
+ * via Intl to remain correct regardless of the server's TZ.
  */
-async function autoArchiveExpiredContracts() {
+export async function autoArchiveExpiredContracts() {
   const now = new Date()
   const maltaNow = new Date(now.toLocaleString('en-US', { timeZone: 'Europe/Malta' }))
-  const maltaHour = maltaNow.getHours()
 
-  // Only run archival check between 04:00 and 08:00 Malta time
-  // (After 04:00 AM, yesterday's contracts should be archived)
-  if (maltaHour >= 4 && maltaHour < 8) {
-    // Get start of yesterday at 08:00 AM Malta time
-    const yesterdayStart = new Date(maltaNow)
-    yesterdayStart.setDate(yesterdayStart.getDate() - 1)
-    yesterdayStart.setHours(8, 0, 0, 0)
+  // Today's 04:00 AM Malta time
+  const todayDeadline = new Date(maltaNow)
+  todayDeadline.setHours(4, 0, 0, 0)
 
-    // Get today at 04:00 AM Malta time
-    const todayDeadline = new Date(maltaNow)
-    todayDeadline.setHours(4, 0, 0, 0)
-
-    // Convert Malta times to UTC for DB comparison
-    const utcOffset = now.getTime() - maltaNow.getTime()
-    const utcYesterdayStart = new Date(yesterdayStart.getTime() + utcOffset)
-    const utcTodayDeadline = new Date(todayDeadline.getTime() + utcOffset)
-
-    // Archive contracts created between yesterday 08:00 and today 04:00 that are not yet archived
-    await db.rentalContract.updateMany({
-      where: {
-        createdAt: {
-          gte: utcYesterdayStart,
-          lt: utcTodayDeadline,
-        },
-        archivedAt: null,
-        status: { in: ['pending', 'in_progress', 'completed'] },
-      },
-      data: {
-        status: 'archived',
-        archivedAt: now,
-      },
-    })
+  // If we haven't reached today's 04:00 AM yet, nothing to archive
+  // (yesterday's batch was already handled by previous runs)
+  if (maltaNow < todayDeadline) {
+    return { archived: 0, skipped: 'before-deadline' as 'before-deadline' }
   }
+
+  // Convert Malta deadline to UTC for DB comparison
+  const utcOffset = now.getTime() - maltaNow.getTime()
+  const utcTodayDeadline = new Date(todayDeadline.getTime() + utcOffset)
+
+  // Archive ALL active contracts created before today's 04:00 AM Malta time.
+  // This includes pending, in_progress AND completed contracts — the home page
+  // must start fresh every morning at 04:00 AM.
+  const result = await db.rentalContract.updateMany({
+    where: {
+      createdAt: { lt: utcTodayDeadline },
+      archivedAt: null,
+      status: { in: ['pending', 'in_progress', 'completed'] },
+    },
+    data: {
+      status: 'archived',
+      archivedAt: now,
+    },
+  })
+
+  return { archived: result.count, skipped: null as null }
 }
 
 function calculateTokenExpiry(): Date {
   const now = new Date()
   const maltaNow = new Date(now.toLocaleString('en-US', { timeZone: 'Europe/Malta' }))
-  // Token expires at 04:00 AM next day Malta time
+  // Token expires at 04:30 AM next day Malta time (30 min grace after workday end)
   const expiry = new Date(maltaNow)
   expiry.setHours(4, 30, 0, 0)
   if (maltaNow >= expiry) {
@@ -69,8 +76,14 @@ export async function GET(request: NextRequest) {
     const session = await getServerSession(authOptions)
     if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-    // Auto-archive expired contracts on each GET
-    await autoArchiveExpiredContracts()
+    // Auto-archive expired contracts on each GET (idempotent + safe)
+    try {
+      await autoArchiveExpiredContracts()
+    } catch (archiveErr) {
+      // Don't block the contracts list if the auto-archive fails
+      // (e.g. transient DB issue) — log and continue.
+      console.error('Auto-archive error (non-fatal):', archiveErr)
+    }
 
     const { searchParams } = new URL(request.url)
     const view = searchParams.get('view') || 'active' // 'active' or 'archived'
@@ -127,6 +140,15 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     console.error('List contracts error:', error)
     const msg = error instanceof Error ? error.message : 'Unknown error'
+
+    // Detect the specific archivedAt schema mismatch and return a helpful message
+    if (msg.includes('archivedAt') && msg.includes('does not exist')) {
+      return NextResponse.json({
+        error: 'Database migration missing. The "archivedAt" column does not exist on RentalContract. Run `npx prisma migrate deploy` (or apply prisma/migrations/20260721_add_geo_and_auth/migration.sql directly on Neon) to fix this.',
+        migrationRequired: true,
+      }, { status: 500 })
+    }
+
     return NextResponse.json({ error: `Failed to fetch contracts: ${msg}` }, { status: 500 })
   }
 }
@@ -168,6 +190,14 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error('Create contract error:', error)
     const msg = error instanceof Error ? error.message : 'Unknown error'
+
+    if (msg.includes('archivedAt') && msg.includes('does not exist')) {
+      return NextResponse.json({
+        error: 'Database migration missing. The "archivedAt" column does not exist on RentalContract. Run `npx prisma migrate deploy` (or apply prisma/migrations/20260721_add_geo_and_auth/migration.sql directly on Neon) to fix this.',
+        migrationRequired: true,
+      }, { status: 500 })
+    }
+
     return NextResponse.json({ error: `Failed to create contract: ${msg}` }, { status: 500 })
   }
 }
