@@ -65,14 +65,12 @@
 }
 
 @layer components {
-  /* Skeleton shimmer */
   .skeleton {
     background: linear-gradient(90deg, #f0f0eb 0%, #fafaf7 50%, #f0f0eb 100%);
     background-size: 200% 100%;
     animation: shimmer 1.5s ease-in-out infinite;
   }
   
-  /* Status dot pulse */
   .status-dot {
     position: relative;
     display: inline-flex;
@@ -90,7 +88,6 @@
     animation: pulse 2s ease-in-out infinite;
   }
   
-  /* Smooth card hover */
   .card-interactive {
     transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   }
@@ -100,7 +97,6 @@
     box-shadow: var(--shadow-md);
   }
   
-  /* Tabular numbers for stats */
   .tabular-nums {
     font-variant-numeric: tabular-nums;
   }
