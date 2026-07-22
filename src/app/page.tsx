@@ -1,8 +1,3 @@
-Il file è nero perché il codice che hai copiato si è troncato a metà (all'ultima riga `{c.t`), creando un errore di sintassi che fa crollare tutta la pagina.
-
-Ecco il file `src/app/page.tsx` **COMPLETO, FINALE E NON TRONCATO**. Copia **tutto** il blocco qui sotto e sostituisci l'intero contenuto del tuo file `page.tsx`.
-
-```tsx
 'use client';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useSession, signIn, signOut } from 'next-auth/react';
@@ -628,90 +623,90 @@ export default function Home() {
         </div>
       </main>
 
-      {/* Create Contract Modal */}
       {showCreate && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 animate-fade-in" onClick={() => setShowCreate(false)}>
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 animate-slide-up" onClick={e => e.stopPropagation()}>
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-bold text-gray-900">New Contract</h3>
-              <button onClick={() => setShowCreate(false)} className="p-2 rounded-lg hover:bg-gray-100 text-gray-500"><Icon.Close /></button>
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg p-6 animate-slide-up" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-5">
+              <h3 className="text-lg font-bold tracking-tight text-gray-900">New Contract</h3>
+              <button onClick={() => setShowCreate(false)} className="text-gray-400 hover:text-gray-600 p-1 rounded-lg hover:bg-gray-100 transition-colors"><Icon.Close /></button>
             </div>
-            <form onSubmit={handleCreateContract} className="space-y-3">
-              <div className="grid grid-cols-2 gap-3">
+            <form onSubmit={handleCreateContract} className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-medium text-gray-500 mb-1">Contract Number</label>
-                  <input type="text" required value={createForm.contractNumber} onChange={e => setCreateForm({...createForm, contractNumber: e.target.value})} className="w-full px-3 py-2 rounded-lg border border-[#ebebe6] text-sm focus:outline-none focus:border-[#FFCB05] focus:ring-2 focus:ring-[#FFCB05]/20" />
+                  <label className="block text-xs font-medium text-gray-600 mb-1.5">Contract Number *</label>
+                  <input required value={createForm.contractNumber} onChange={e => setCreateForm({ ...createForm, contractNumber: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:border-[#FFCB05] focus:ring-2 focus:ring-[#FFCB05]/20 transition-all" />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-gray-500 mb-1">Customer Name</label>
-                  <input type="text" required value={createForm.customerName} onChange={e => setCreateForm({...createForm, customerName: e.target.value})} className="w-full px-3 py-2 rounded-lg border border-[#ebebe6] text-sm focus:outline-none focus:border-[#FFCB05] focus:ring-2 focus:ring-[#FFCB05]/20" />
+                  <label className="block text-xs font-medium text-gray-600 mb-1.5">Customer Name *</label>
+                  <input required value={createForm.customerName} onChange={e => setCreateForm({ ...createForm, customerName: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:border-[#FFCB05] focus:ring-2 focus:ring-[#FFCB05]/20 transition-all" />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-gray-500 mb-1">Email</label>
-                  <input type="email" value={createForm.customerEmail} onChange={e => setCreateForm({...createForm, customerEmail: e.target.value})} className="w-full px-3 py-2 rounded-lg border border-[#ebebe6] text-sm focus:outline-none focus:border-[#FFCB05] focus:ring-2 focus:ring-[#FFCB05]/20" />
+                  <label className="block text-xs font-medium text-gray-600 mb-1.5">Customer Email</label>
+                  <input type="email" value={createForm.customerEmail} onChange={e => setCreateForm({ ...createForm, customerEmail: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:border-[#FFCB05] focus:ring-2 focus:ring-[#FFCB05]/20 transition-all" />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-gray-500 mb-1">Phone</label>
-                  <input type="tel" value={createForm.customerPhone} onChange={e => setCreateForm({...createForm, customerPhone: e.target.value})} className="w-full px-3 py-2 rounded-lg border border-[#ebebe6] text-sm focus:outline-none focus:border-[#FFCB05] focus:ring-2 focus:ring-[#FFCB05]/20" />
+                  <label className="block text-xs font-medium text-gray-600 mb-1.5">Customer Phone</label>
+                  <input value={createForm.customerPhone} onChange={e => setCreateForm({ ...createForm, customerPhone: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:border-[#FFCB05] focus:ring-2 focus:ring-[#FFCB05]/20 transition-all" />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-gray-500 mb-1">Vehicle Plate</label>
-                  <input type="text" required value={createForm.vehiclePlate} onChange={e => setCreateForm({...createForm, vehiclePlate: e.target.value})} className="w-full px-3 py-2 rounded-lg border border-[#ebebe6] text-sm focus:outline-none focus:border-[#FFCB05] focus:ring-2 focus:ring-[#FFCB05]/20" />
+                  <label className="block text-xs font-medium text-gray-600 mb-1.5">Vehicle Plate *</label>
+                  <input required value={createForm.vehiclePlate} onChange={e => setCreateForm({ ...createForm, vehiclePlate: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:border-[#FFCB05] focus:ring-2 focus:ring-[#FFCB05]/20 transition-all" />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-gray-500 mb-1">Vehicle Model</label>
-                  <input type="text" required value={createForm.vehicleModel} onChange={e => setCreateForm({...createForm, vehicleModel: e.target.value})} className="w-full px-3 py-2 rounded-lg border border-[#ebebe6] text-sm focus:outline-none focus:border-[#FFCB05] focus:ring-2 focus:ring-[#FFCB05]/20" />
+                  <label className="block text-xs font-medium text-gray-600 mb-1.5">Vehicle Model *</label>
+                  <input required value={createForm.vehicleModel} onChange={e => setCreateForm({ ...createForm, vehicleModel: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:border-[#FFCB05] focus:ring-2 focus:ring-[#FFCB05]/20 transition-all" />
                 </div>
                 <div className="col-span-2">
-                  <label className="block text-xs font-medium text-gray-500 mb-1">Vehicle Color</label>
-                  <input type="text" value={createForm.vehicleColor} onChange={e => setCreateForm({...createForm, vehicleColor: e.target.value})} className="w-full px-3 py-2 rounded-lg border border-[#ebebe6] text-sm focus:outline-none focus:border-[#FFCB05] focus:ring-2 focus:ring-[#FFCB05]/20" />
+                  <label className="block text-xs font-medium text-gray-600 mb-1.5">Vehicle Color</label>
+                  <input value={createForm.vehicleColor} onChange={e => setCreateForm({ ...createForm, vehicleColor: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:border-[#FFCB05] focus:ring-2 focus:ring-[#FFCB05]/20 transition-all" />
                 </div>
               </div>
-              <div className="flex gap-2 pt-3">
-                <button type="button" onClick={() => setShowCreate(false)} className="flex-1 py-2.5 rounded-xl border border-[#ebebe6] text-sm font-medium text-gray-600 hover:bg-[#fafaf7] transition-colors">Cancel</button>
-                <button type="submit" className="flex-1 py-2.5 rounded-xl bg-[#0a0a0a] text-white text-sm font-medium hover:bg-[#161616] transition-colors active:scale-[0.98]">Create Contract</button>
+              <div className="flex items-center justify-end gap-3 pt-4 border-t border-gray-100">
+                <button type="button" onClick={() => setShowCreate(false)} className="px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition-colors">Cancel</button>
+                <button type="submit" className="px-4 py-2 text-sm font-medium bg-[#0a0a0a] hover:bg-[#161616] text-white rounded-lg transition-colors active:scale-[0.98]">Create Contract</button>
               </div>
             </form>
           </div>
         </div>
       )}
 
-      {/* Generated Token Modal */}
       {generatedToken && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 animate-fade-in" onClick={() => setGeneratedToken(null)}>
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 animate-slide-up" onClick={e => e.stopPropagation()}>
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-bold text-gray-900">Access Token Generated</h3>
-              <button onClick={() => setGeneratedToken(null)} className="p-2 rounded-lg hover:bg-gray-100 text-gray-500"><Icon.Close /></button>
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg p-6 animate-slide-up" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-5">
+              <h3 className="text-lg font-bold tracking-tight text-gray-900">Token Generated</h3>
+              <button onClick={() => setGeneratedToken(null)} className="text-gray-400 hover:text-gray-600 p-1 rounded-lg hover:bg-gray-100 transition-colors"><Icon.Close /></button>
             </div>
-            <p className="text-sm text-gray-500 mb-4">Share this link with the customer to start the check-in process.</p>
-            <div className="bg-gray-50 border border-gray-200 rounded-xl p-3 flex items-center gap-2">
-              <span className="flex-1 text-xs font-mono text-gray-700 truncate">{generatedToken.link}</span>
-              <button onClick={() => copyToClip(generatedToken.link, 'link')} className="p-2 rounded-lg bg-white border border-gray-200 text-gray-600 hover:bg-gray-100 transition-colors">
-                {copied === 'link' ? <Icon.Check /> : <Icon.Link />}
-              </button>
+            <div className="space-y-4">
+              <p className="text-sm text-gray-600">Share this link with the customer to complete the check-in:</p>
+              <div className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg border border-gray-200">
+                <code className="flex-1 text-xs text-gray-800 overflow-x-auto whitespace-nowrap">{generatedToken.link}</code>
+                <button onClick={() => copyToClip(generatedToken.link, 'link')} className="px-3 py-1.5 text-xs font-medium bg-[#0a0a0a] text-white rounded-md hover:bg-[#161616] transition-colors">
+                  {copied === 'link' ? 'Copied!' : 'Copy'}
+                </button>
+              </div>
+              <div className="text-xs text-gray-500">
+                <p>Expires at: {new Date(generatedToken.expiresAt).toLocaleString()}</p>
+              </div>
             </div>
-            <div className="mt-4">
-              <p className="text-xs font-medium text-gray-500 mb-1">Expires at</p>
-              <p className="text-sm text-gray-900">{new Date(generatedToken.expiresAt).toLocaleString()}</p>
+            <div className="flex items-center justify-end pt-4 border-t border-gray-100 mt-4">
+              <button onClick={() => setGeneratedToken(null)} className="px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition-colors">Close</button>
             </div>
-            <button onClick={() => setGeneratedToken(null)} className="w-full mt-6 py-2.5 rounded-xl bg-[#0a0a0a] text-white text-sm font-medium hover:bg-[#161616] transition-colors active:scale-[0.98]">Done</button>
           </div>
         </div>
       )}
 
-      {/* Delete All Confirm Modal */}
       {deleteAllConfirm && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 animate-fade-in" onClick={() => setDeleteAllConfirm(false)}>
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 animate-slide-up" onClick={e => e.stopPropagation()}>
-            <div className="w-12 h-12 rounded-full bg-red-50 flex items-center justify-center mx-auto mb-4 text-red-600">
-              <Icon.Trash />
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6 animate-slide-up" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center text-red-600"><Icon.Trash /></div>
+              <h3 className="text-lg font-bold tracking-tight text-gray-900">Delete Contracts</h3>
             </div>
-            <h3 className="text-lg font-bold text-gray-900 text-center mb-2">Delete {selectedContracts.size} contracts?</h3>
-            <p className="text-sm text-gray-500 text-center mb-6">This action cannot be undone. All associated photos and tokens will be permanently deleted.</p>
-            <div className="flex gap-2">
-              <button onClick={() => setDeleteAllConfirm(false)} className="flex-1 py-2.5 rounded-xl border border-[#ebebe6] text-sm font-medium text-gray-600 hover:bg-[#fafaf7] transition-colors">Cancel</button>
-              <button onClick={handleDeleteSelected} className="flex-1 py-2.5 rounded-xl bg-red-600 text-white text-sm font-medium hover:bg-red-700 transition-colors active:scale-[0.98]">Delete</button>
+            <p className="text-sm text-gray-600 mb-5">Are you sure you want to delete {selectedContracts.size} contract(s)? This action cannot be undone.</p>
+            <div className="flex items-center justify-end gap-3">
+              <button onClick={() => setDeleteAllConfirm(false)} className="px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition-colors">Cancel</button>
+              <button onClick={handleDeleteSelected} className="px-4 py-2 text-sm font-medium bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors active:scale-[0.98]">Delete</button>
             </div>
           </div>
         </div>
@@ -719,4 +714,3 @@ export default function Home() {
     </div>
   );
 }
-```
