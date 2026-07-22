@@ -3,6 +3,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useSession, signIn, signOut } from 'next-auth/react';
 import { t, LOCALES, type Locale } from '@/lib/i18n';
 
+
 interface AdminContract {
   id: string; contractNumber: string; customerName: string; customerEmail: string | null; customerPhone: string | null;
   vehiclePlate: string; vehicleModel: string; vehicleColor: string | null; status: string; createdAt: string;
@@ -10,16 +11,20 @@ interface AdminContract {
   photosSubmitted: number; photos: Array<{ key: string; label: string; fileName: string; uploadedAt: string; capturedAt?: string; latitude?: number | null; longitude?: number | null }>;
 }
 
+
 interface ChecklistItem {
   id: string; key: string; label: string; labelEn: string | null; description: string | null; icon: string | null;
   required: boolean; completed: boolean; photoCount: number;
 }
 
+
 interface ValidatedContract {
   id: string; contractNumber: string; customerName: string; vehiclePlate: string; vehicleModel: string; vehicleColor: string | null; status: string;
 }
 
+
 const MAX_PHOTOS = 10;
+
 
 function CarDiagram({ onSelect, photoCounts }: { onSelect: (key: string) => void; photoCounts: Record<string, number> }) {
   const g = (k: string) => photoCounts[k] || 0;
@@ -58,6 +63,7 @@ function CarDiagram({ onSelect, photoCounts }: { onSelect: (key: string) => void
   );
 }
 
+
 function PhotoZone({ x, y, w, h, label, done, count, onSelect }: { x: number; y: number; w: number; h: number; label: string; done: boolean; count: number; onSelect: (k: string) => void }) {
   return (
     <g onClick={() => onSelect(label)} style={{ cursor: 'pointer' }}>
@@ -71,6 +77,7 @@ function PhotoZone({ x, y, w, h, label, done, count, onSelect }: { x: number; y:
     </g>
   );
 }
+
 
 function LanguageSelector({ locale, setLocale, dark = false }: { locale: Locale; setLocale: (l: Locale) => void; dark?: boolean }) {
   const [open, setOpen] = useState(false);
@@ -99,6 +106,7 @@ function LanguageSelector({ locale, setLocale, dark = false }: { locale: Locale;
   );
 }
 
+
 const Icon = {
   Plus: () => <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" /></svg>,
   Upload: () => <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M7 16a4 4 0 01-.88-7.9 5 5 0 019.9-1A5.5 5.5 0 0118 16M12 12v6m0 0l-3-3m3 3l3-3" /></svg>,
@@ -111,6 +119,7 @@ const Icon = {
   Car: () => <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M9 17a2 2 0 11-4 0 2 2 0 014 0zM19 17a2 2 0 11-4 0 2 2 0 014 0z M13 16V6a1 1 0 00-1-1H4a1 1 0 00-1 1v10a1 1 0 001 1h1m8-1a1 1 0 01-1 1H9m4-1V8a1 1 0 011-1h2.586a1 1 0 01.707.293l3.414 3.414a1 1 0 01.293.707V16a1 1 0 01-1 1h-1m-6-1a1 1 0 001 1h1M5 17a2 2 0 104 0m-4 0a2 2 0 114 0m6 0a2 2 0 104 0m-4 0a2 2 0 114 0" /></svg>,
   Calendar: () => <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>,
 };
+
 
 export default function Home() {
   const { data: session, status: sessionStatus } = useSession();
@@ -139,10 +148,13 @@ export default function Home() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const objectUrlsRef = useRef<string[]>([]);
 
+
   useEffect(() => { return () => { objectUrlsRef.current.forEach(url => URL.revokeObjectURL(url)); }; }, []);
+
 
   const geoRef = useRef<{ latitude: number; longitude: number } | null>(null);
   const geoRequestedRef = useRef(false);
+
 
   const requestGeolocation = useCallback((): Promise<{ latitude: number; longitude: number } | null> => {
     return new Promise((resolve) => {
@@ -156,6 +168,7 @@ export default function Home() {
     });
   }, []);
 
+
   useEffect(() => {
     const hash = window.location.hash;
     if (hash.startsWith('#token=')) { const tk = hash.replace('#token=', ''); setToken(tk); setMode('customer'); validateToken(tk); }
@@ -165,6 +178,7 @@ export default function Home() {
       setMode('admin'); loadContracts();
     }
   }, [sessionStatus, session]);
+
 
   const validateToken = async (tk: string) => {
     try {
@@ -179,7 +193,9 @@ export default function Home() {
     } catch { setError(t(locale, 'landing.connectionError')); }
   };
 
+
   const loadContracts = async () => { try { const r = await fetch('/api/admin/contracts'); if (r.ok) setContracts((await r.json()).contracts || []); } catch {} };
+
 
   const openCamera = (key: string) => {
     const count = photoCounts[key] || 0;
@@ -190,6 +206,7 @@ export default function Home() {
     if (fileInputRef.current) fileInputRef.current.value = '';
     setTimeout(() => fileInputRef.current?.click(), 150);
   };
+
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -220,6 +237,7 @@ export default function Home() {
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
+
   const totalPhotos = Object.values(photoCounts).reduce((s, c) => s + c, 0);
   const handleSubmit = async () => {
     if (totalPhotos === 0 || isSubmitting) return;
@@ -233,6 +251,7 @@ export default function Home() {
     finally { setIsSubmitting(false); }
   };
 
+
   const handleCreateContract = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
@@ -243,10 +262,12 @@ export default function Home() {
     } catch (err: unknown) { alert(err instanceof Error ? err.message : 'Failed'); }
   };
 
+
   const handleGenerateToken = async (cid: string) => {
     try { const r = await fetch('/api/admin/tokens', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ contractId: cid }) }); const d = await r.json(); if (!r.ok) throw new Error(d.error); setGeneratedToken(d.accessToken); }
     catch (err: unknown) { alert(err instanceof Error ? err.message : 'Failed'); }
   };
+
 
   const handleBulkUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]; if (!file) return; setUploading(true); setBulkResult(null);
@@ -255,7 +276,9 @@ export default function Home() {
     finally { setUploading(false); if (e.target) e.target.value = ''; }
   };
 
+
   const copyToClip = (text: string, id: string) => { navigator.clipboard.writeText(text); setCopied(id); setTimeout(() => setCopied(''), 2000); };
+
 
   const statusBadge = (s: string) => {
     const map: Record<string, { bg: string; text: string; dot: string; label: string }> = {
@@ -266,6 +289,7 @@ export default function Home() {
     };
     return map[s] || map.pending;
   };
+
 
   const filteredContracts = useCallback(() => {
     let result = contracts;
@@ -283,6 +307,7 @@ export default function Home() {
     return result;
   }, [contracts, searchQuery, statusFilter]);
 
+
   const handleDeleteSelected = async () => {
     if (selectedContracts.size === 0) return;
     const ids = Array.from(selectedContracts);
@@ -292,15 +317,18 @@ export default function Home() {
     } catch (err: unknown) { alert(err instanceof Error ? err.message : 'Failed to delete'); }
   };
 
+
   const toggleSelectAll = () => {
     const filtered = filteredContracts();
     if (selectedContracts.size === filtered.length && filtered.length > 0) setSelectedContracts(new Set());
     else setSelectedContracts(new Set(filtered.map(c => c.id)));
   };
 
+
   const toggleSelect = (id: string) => {
     setSelectedContracts(prev => { const next = new Set(prev); if (next.has(id)) next.delete(id); else next.add(id); return next; });
   };
+
 
   if (mode === 'loading') return (
     <div className="min-h-screen flex items-center justify-center bg-[#0a0a0a]">
@@ -310,6 +338,7 @@ export default function Home() {
       </div>
     </div>
   );
+
 
   if (mode === 'unauthenticated') return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#0a0a0a] via-[#161616] to-[#0a0a0a] px-4">
@@ -332,6 +361,7 @@ export default function Home() {
     </div>
   );
 
+
   if (mode === 'completed') return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-emerald-50 to-teal-50 p-4">
       <div className="bg-white rounded-2xl shadow-lg p-10 max-w-md w-full text-center border border-emerald-100 animate-slide-up">
@@ -342,6 +372,7 @@ export default function Home() {
       </div>
     </div>
   );
+
 
   if (mode === 'customer') return (
     <div className="min-h-screen bg-[#fafaf7]">
@@ -428,6 +459,7 @@ export default function Home() {
       <div className="h-10" />
     </div>
   );
+
 
   return (
     <div className="min-h-screen bg-[#fafaf7] text-gray-900">
