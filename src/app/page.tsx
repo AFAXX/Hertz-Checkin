@@ -46,12 +46,10 @@ function CarDiagram({ onSelect, photoCounts }: { onSelect: (key: string) => void
       <ellipse cx="68" cy="420" rx="8" ry="13" fill="#64748b" />
       <ellipse cx="232" cy="420" rx="18" ry="26" fill="#1f2937" />
       <ellipse cx="232" cy="420" rx="8" ry="13" fill="#64748b" />
-      
       <PhotoZone x={90} y={435} w={120} h={60} label="front" done={done('front')} count={g('front')} onSelect={onSelect} />
       <PhotoZone x={90} y={75} w={120} h={60} label="back" done={done('back')} count={g('back')} onSelect={onSelect} />
       <PhotoZone x={28} y={195} w={50} h={130} label="passenger_side" done={done('passenger_side')} count={g('passenger_side')} onSelect={onSelect} />
       <PhotoZone x={222} y={195} w={50} h={130} label="driver_side" done={done('driver_side')} count={g('driver_side')} onSelect={onSelect} />
-      
       <text x="150" y="525" textAnchor="middle" fill="#5c5c5c" fontSize="10" fontWeight="700" letterSpacing="1.5">FRONT</text>
       <text x="150" y="22" textAnchor="middle" fill="#5c5c5c" fontSize="10" fontWeight="700" letterSpacing="1.5">BACK</text>
       <text x="14" y="265" textAnchor="middle" fill="#5c5c5c" fontSize="9" fontWeight="600" transform="rotate(-90,14,265)" letterSpacing="0.5">PASSENGER</text>
@@ -63,12 +61,7 @@ function CarDiagram({ onSelect, photoCounts }: { onSelect: (key: string) => void
 function PhotoZone({ x, y, w, h, label, done, count, onSelect }: { x: number; y: number; w: number; h: number; label: string; done: boolean; count: number; onSelect: (k: string) => void }) {
   return (
     <g onClick={() => onSelect(label)} style={{ cursor: 'pointer' }}>
-      <rect x={x} y={y} width={w} height={h} rx={10}
-        fill={done ? 'rgba(16,185,129,0.12)' : 'rgba(0,0,0,0.02)'}
-        stroke={done ? '#10b981' : '#d8d8d2'}
-        strokeWidth="1.5"
-        strokeDasharray={done ? 'none' : '4 3'}
-      />
+      <rect x={x} y={y} width={w} height={h} rx={10} fill={done ? 'rgba(16,185,129,0.12)' : 'rgba(0,0,0,0.02)'} stroke={done ? '#10b981' : '#d8d8d2'} strokeWidth="1.5" strokeDasharray={done ? 'none' : '4 3'} />
       {count > 0 && (
         <>
           <circle cx={x + w - 10} cy={y + 10} r={10} fill="#10b981" />
@@ -84,11 +77,7 @@ function LanguageSelector({ locale, setLocale, dark = false }: { locale: Locale;
   const currentLocale = LOCALES.find(l => l.code === locale) || LOCALES[0];
   return (
     <div className="relative">
-      <button
-        onClick={() => setOpen(!open)}
-        className={'flex items-center gap-1.5 text-xs font-medium px-2.5 py-1.5 rounded-lg border transition-all ' +
-          (dark ? 'border-white/10 bg-white/5 text-gray-300 hover:bg-white/10' : 'border-[#ebebe6] bg-white text-gray-600 hover:bg-[#fafaf7]')}
-      >
+      <button onClick={() => setOpen(!open)} className={'flex items-center gap-1.5 text-xs font-medium px-2.5 py-1.5 rounded-lg border transition-all ' + (dark ? 'border-white/10 bg-white/5 text-gray-300 hover:bg-white/10' : 'border-[#ebebe6] bg-white text-gray-600 hover:bg-[#fafaf7]')}>
         <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" /></svg>
         {currentLocale.nativeName}
         <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" /></svg>
@@ -98,12 +87,7 @@ function LanguageSelector({ locale, setLocale, dark = false }: { locale: Locale;
           <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
           <div className="absolute right-0 top-full mt-1.5 bg-white rounded-xl shadow-lg border border-[#ebebe6] py-1 z-50 min-w-[160px] max-h-[300px] overflow-y-auto animate-slide-up">
             {LOCALES.map(l => (
-              <button
-                key={l.code}
-                onClick={() => { setLocale(l.code); setOpen(false); }}
-                className={'w-full text-left px-4 py-2 text-sm hover:bg-[#fafaf7] transition-colors ' +
-                  (l.code === locale ? 'font-semibold text-[#0a0a0a] bg-[#fef9d9]' : 'text-gray-700')}
-              >
+              <button key={l.code} onClick={() => { setLocale(l.code); setOpen(false); }} className={'w-full text-left px-4 py-2 text-sm hover:bg-[#fafaf7] transition-colors ' + (l.code === locale ? 'font-semibold text-[#0a0a0a] bg-[#fef9d9]' : 'text-gray-700')}>
                 <span className="mr-2 text-xs text-gray-400">{l.code.toUpperCase()}</span>
                 {l.nativeName}
               </button>
@@ -155,9 +139,7 @@ export default function Home() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const objectUrlsRef = useRef<string[]>([]);
 
-  useEffect(() => {
-    return () => { objectUrlsRef.current.forEach(url => URL.revokeObjectURL(url)); };
-  }, []);
+  useEffect(() => { return () => { objectUrlsRef.current.forEach(url => URL.revokeObjectURL(url)); }; }, []);
 
   const geoRef = useRef<{ latitude: number; longitude: number } | null>(null);
   const geoRequestedRef = useRef(false);
@@ -167,10 +149,7 @@ export default function Home() {
       if (geoRef.current) { resolve(geoRef.current); return; }
       if (!navigator.geolocation) { resolve(null); return; }
       navigator.geolocation.getCurrentPosition(
-        (pos) => {
-          const geo = { latitude: pos.coords.latitude, longitude: pos.coords.longitude };
-          geoRef.current = geo; resolve(geo);
-        },
+        (pos) => { const geo = { latitude: pos.coords.latitude, longitude: pos.coords.longitude }; geoRef.current = geo; resolve(geo); },
         () => resolve(null),
         { enableHighAccuracy: true, timeout: 5000, maximumAge: 300000 }
       );
@@ -179,9 +158,8 @@ export default function Home() {
 
   useEffect(() => {
     const hash = window.location.hash;
-    if (hash.startsWith('#token=')) {
-      const tk = hash.replace('#token=', ''); setToken(tk); setMode('customer'); validateToken(tk);
-    } else {
+    if (hash.startsWith('#token=')) { const tk = hash.replace('#token=', ''); setToken(tk); setMode('customer'); validateToken(tk); }
+    else {
       if (sessionStatus === 'loading') return;
       if (sessionStatus === 'unauthenticated' || !session) { setMode('unauthenticated'); return; }
       setMode('admin'); loadContracts();
@@ -309,10 +287,7 @@ export default function Home() {
     if (selectedContracts.size === 0) return;
     const ids = Array.from(selectedContracts);
     try {
-      for (const id of ids) {
-        const r = await fetch('/api/admin/contracts?id=' + id, { method: 'DELETE' });
-        if (!r.ok) { const errData = await r.json().catch(() => ({})); throw new Error(errData.error || `Delete failed for ${id}`); }
-      }
+      for (const id of ids) { const r = await fetch('/api/admin/contracts?id=' + id, { method: 'DELETE' }); if (!r.ok) { const errData = await r.json().catch(() => ({})); throw new Error(errData.error || `Delete failed for ${id}`); } }
       setSelectedContracts(new Set()); setDeleteAllConfirm(false); loadContracts();
     } catch (err: unknown) { alert(err instanceof Error ? err.message : 'Failed to delete'); }
   };
@@ -340,9 +315,7 @@ export default function Home() {
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#0a0a0a] via-[#161616] to-[#0a0a0a] px-4">
       <div className="w-full max-w-md animate-slide-up">
         <div className="text-center mb-10">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-[#FFCB05] mb-5 shadow-lg shadow-[#FFCB05]/20">
-            <Icon.Car />
-          </div>
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-[#FFCB05] mb-5 shadow-lg shadow-[#FFCB05]/20"><Icon.Car /></div>
           <h1 className="text-xl font-bold text-white tracking-tight">HERTZ MALTA</h1>
           <p className="text-sm text-gray-400 mt-1.5 font-medium">Check-out · Admin Console</p>
         </div>
@@ -362,14 +335,10 @@ export default function Home() {
   if (mode === 'completed') return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-emerald-50 to-teal-50 p-4">
       <div className="bg-white rounded-2xl shadow-lg p-10 max-w-md w-full text-center border border-emerald-100 animate-slide-up">
-        <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-6">
-          <Icon.Check />
-        </div>
+        <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-6"><Icon.Check /></div>
         <h1 className="text-xl font-bold text-gray-900 mb-2">{t(locale, 'confirm.title')}</h1>
         <p className="text-sm text-gray-600">{t(locale, 'confirm.subtitle')}</p>
-        <div className="mt-8 pt-6 border-t border-gray-100">
-          <p className="text-xs text-gray-400">{t(locale, 'confirm.thanks')}</p>
-        </div>
+        <div className="mt-8 pt-6 border-t border-gray-100"><p className="text-xs text-gray-400">{t(locale, 'confirm.thanks')}</p></div>
       </div>
     </div>
   );
@@ -382,9 +351,7 @@ export default function Home() {
           <div className="flex items-center justify-between">
             <div>
               <div className="flex items-center gap-2">
-                <div className="w-7 h-7 rounded-md bg-[#FFCB05] flex items-center justify-center">
-                  <Icon.Car />
-                </div>
+                <div className="w-7 h-7 rounded-md bg-[#FFCB05] flex items-center justify-center"><Icon.Car /></div>
                 <h1 className="text-base font-bold text-white tracking-tight">HERTZ MALTA</h1>
               </div>
               <p className="text-[11px] text-[#FFCB05] mt-0.5 font-medium ml-9">{t(locale, 'app.title')}</p>
@@ -409,7 +376,6 @@ export default function Home() {
           )}
         </div>
       </div>
-
       <div className="max-w-lg mx-auto px-5 py-6 space-y-5">
         {error && (
           <div className="bg-red-50 border border-red-100 text-red-700 px-4 py-3 rounded-xl text-sm flex items-start gap-2 animate-slide-up">
@@ -418,9 +384,7 @@ export default function Home() {
             <button onClick={() => setError('')} className="font-bold text-red-400 ml-2"><Icon.Close /></button>
           </div>
         )}
-        <div className="bg-white rounded-2xl shadow-sm p-5 border border-[#ebebe6]">
-          <CarDiagram onSelect={openCamera} photoCounts={photoCounts} />
-        </div>
+        <div className="bg-white rounded-2xl shadow-sm p-5 border border-[#ebebe6]"><CarDiagram onSelect={openCamera} photoCounts={photoCounts} /></div>
         <div className="space-y-2">
           {checklist.map(item => {
             const count = photoCounts[item.key] || 0;
@@ -429,13 +393,10 @@ export default function Home() {
             const previews = localPreviews[item.key] || [];
             const translatedLabel = t(locale, 'photo.' + item.key) !== 'photo.' + item.key ? t(locale, 'photo.' + item.key) : item.label;
             return (
-              <div key={item.id} onClick={() => !full && openCamera(item.key)}
-                className={'bg-white rounded-xl p-3.5 border cursor-pointer transition-all active:scale-[0.99] ' +
-                  (full ? 'border-red-200 bg-red-50/40' : count > 0 ? 'border-emerald-200 bg-emerald-50/30' : 'border-[#ebebe6] hover:border-[#FFCB05]')}>
+              <div key={item.id} onClick={() => !full && openCamera(item.key)} className={'bg-white rounded-xl p-3.5 border cursor-pointer transition-all active:scale-[0.99] ' + (full ? 'border-red-200 bg-red-50/40' : count > 0 ? 'border-emerald-200 bg-emerald-50/30' : 'border-[#ebebe6] hover:border-[#FFCB05]')}>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <div className={'w-9 h-9 rounded-lg flex items-center justify-center text-sm font-medium ' +
-                      (full ? 'bg-red-100 text-red-700' : count > 0 ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-500')}>
+                    <div className={'w-9 h-9 rounded-lg flex items-center justify-center text-sm font-medium ' + (full ? 'bg-red-100 text-red-700' : count > 0 ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-500')}>
                       {isUploading ? <div className="w-4 h-4 border-2 border-[#FFCB05] border-t-transparent rounded-full animate-spin" /> : full ? '✓' : count > 0 ? '✓' : <Icon.Car />}
                     </div>
                     <div>
@@ -443,20 +404,14 @@ export default function Home() {
                       <p className="text-xs text-gray-500 tabular-nums">{count}/{MAX_PHOTOS} foto</p>
                     </div>
                   </div>
-                  <div className={'px-2.5 py-1 rounded-md text-xs font-medium ' +
-                    (full ? 'bg-red-100 text-red-700' : isUploading ? 'bg-amber-100 text-amber-700' : count > 0 ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-500')}>
+                  <div className={'px-2.5 py-1 rounded-md text-xs font-medium ' + (full ? 'bg-red-100 text-red-700' : isUploading ? 'bg-amber-100 text-amber-700' : count > 0 ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-500')}>
                     {full ? t(locale, 'checklist.retake') : isUploading ? t(locale, 'checklist.uploading') : count > 0 ? t(locale, 'checklist.retake') : t(locale, 'checklist.takePhoto')}
                   </div>
                 </div>
                 {previews.length > 0 && (
                   <div className="flex gap-1.5 mt-3 overflow-x-auto pb-1">
                     {previews.map((src, i) => <img key={i} src={src} alt="" className="w-14 h-14 rounded-lg object-cover flex-shrink-0 border border-gray-200" />)}
-                    {!full && (
-                      <div onClick={e => { e.stopPropagation(); openCamera(item.key); }}
-                        className="w-14 h-14 rounded-lg bg-[#fef9d9] border-2 border-dashed border-[#FFCB05] flex items-center justify-center flex-shrink-0 cursor-pointer hover:bg-[#fef3c7]">
-                        <Icon.Plus />
-                      </div>
-                    )}
+                    {!full && (<div onClick={e => { e.stopPropagation(); openCamera(item.key); }} className="w-14 h-14 rounded-lg bg-[#fef9d9] border-2 border-dashed border-[#FFCB05] flex items-center justify-center flex-shrink-0 cursor-pointer hover:bg-[#fef3c7]"><Icon.Plus /></div>)}
                   </div>
                 )}
               </div>
@@ -464,17 +419,8 @@ export default function Home() {
           })}
         </div>
         {totalPhotos > 0 && (
-          <button onClick={handleSubmit} disabled={isSubmitting}
-            className="w-full py-4 rounded-xl text-white font-bold text-base tracking-tight transition-all active:scale-[0.99] shadow-lg shadow-emerald-200 disabled:shadow-none"
-            style={{ backgroundColor: isSubmitting ? '#9ca3af' : '#10b981' }}>
-            {isSubmitting ? (
-              <span className="flex items-center justify-center gap-2"><span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />{t(locale, 'checklist.submitting')}</span>
-            ) : (
-              <span className="flex items-center justify-center gap-2">
-                <Icon.Check />
-                <span>{t(locale, 'checklist.submitCheckin')}</span>
-              </span>
-            )}
+          <button onClick={handleSubmit} disabled={isSubmitting} className="w-full py-4 rounded-xl text-white font-bold text-base tracking-tight transition-all active:scale-[0.99] shadow-lg shadow-emerald-200 disabled:shadow-none" style={{ backgroundColor: isSubmitting ? '#9ca3af' : '#10b981' }}>
+            {isSubmitting ? (<span className="flex items-center justify-center gap-2"><span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />{t(locale, 'checklist.submitting')}</span>) : (<span className="flex items-center justify-center gap-2"><Icon.Check /><span>{t(locale, 'checklist.submitCheckin')}</span></span>)}
           </button>
         )}
         {totalPhotos === 0 && <p className="text-center text-xs text-gray-400">{t(locale, 'checklist.completeAll')}</p>}
@@ -488,9 +434,7 @@ export default function Home() {
       <header className="sticky top-0 z-30 bg-white/80 backdrop-blur-md border-b border-[#ebebe6]">
         <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-lg bg-[#0a0a0a] flex items-center justify-center text-[#FFCB05]">
-              <Icon.Car />
-            </div>
+            <div className="w-9 h-9 rounded-lg bg-[#0a0a0a] flex items-center justify-center text-[#FFCB05]"><Icon.Car /></div>
             <div>
               <h1 className="text-sm font-bold tracking-tight text-[#0a0a0a]">HERTZ MALTA</h1>
               <p className="text-[10px] text-gray-500 uppercase tracking-wide font-medium">Admin Console</p>
@@ -502,7 +446,6 @@ export default function Home() {
           </div>
         </div>
       </header>
-
       <main className="max-w-6xl mx-auto px-4 py-6">
         <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 mb-4">
           <div>
@@ -514,61 +457,28 @@ export default function Home() {
               {uploading ? <><span className="w-4 h-4 border-2 border-gray-300 border-t-[#FFCB05] rounded-full animate-spin" /> Uploading...</> : <><Icon.Upload /> Bulk Upload Excel</>}
               <input type="file" accept=".xlsx,.xls" onChange={handleBulkUpload} className="hidden" disabled={uploading} />
             </label>
-            <button onClick={() => setShowCreate(true)} className="inline-flex items-center gap-2 bg-[#FFCB05] hover:bg-[#e6b800] text-[#0a0a0a] px-3 py-2 rounded-lg text-sm font-medium transition-colors shadow-sm active:scale-[0.98]">
-              <Icon.Plus /> New Contract
-            </button>
-            {selectedContracts.size > 0 && (
-              <button onClick={() => setDeleteAllConfirm(true)} className="inline-flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white px-3 py-2 rounded-lg text-sm font-medium transition-colors active:scale-[0.98]">
-                <Icon.Trash /> Delete ({selectedContracts.size})
-              </button>
-            )}
+            <button onClick={() => setShowCreate(true)} className="inline-flex items-center gap-2 bg-[#FFCB05] hover:bg-[#e6b800] text-[#0a0a0a] px-3 py-2 rounded-lg text-sm font-medium transition-colors shadow-sm active:scale-[0.98]"><Icon.Plus /> New Contract</button>
+            {selectedContracts.size > 0 && (<button onClick={() => setDeleteAllConfirm(true)} className="inline-flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white px-3 py-2 rounded-lg text-sm font-medium transition-colors active:scale-[0.98]"><Icon.Trash /> Delete ({selectedContracts.size})</button>)}
           </div>
         </div>
-
         <div className="flex flex-col md:flex-row items-stretch md:items-center gap-3 mb-4">
           <div className="relative flex-1">
             <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"><Icon.Search /></span>
-            <input
-              type="text"
-              placeholder="Search by contract, name, plate..."
-              value={searchQuery}
-              onChange={e => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 rounded-lg border border-[#ebebe6] bg-white text-sm focus:outline-none focus:border-[#FFCB05] focus:ring-2 focus:ring-[#FFCB05]/20 transition-all"
-            />
-            {searchQuery && (
-              <button onClick={() => setSearchQuery('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"><Icon.Close /></button>
-            )}
+            <input type="text" placeholder="Search by contract, name, plate..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="w-full pl-10 pr-4 py-2 rounded-lg border border-[#ebebe6] bg-white text-sm focus:outline-none focus:border-[#FFCB05] focus:ring-2 focus:ring-[#FFCB05]/20 transition-all" />
+            {searchQuery && (<button onClick={() => setSearchQuery('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"><Icon.Close /></button>)}
           </div>
           <div className="flex gap-1.5 bg-white border border-[#ebebe6] rounded-lg p-1 overflow-x-auto">
-            {[
-              { v: 'all', l: 'All' },
-              { v: 'pending', l: 'Pending' },
-              { v: 'in_progress', l: 'In Progress' },
-              { v: 'completed', l: 'Completed' },
-            ].map(f => (
-              <button key={f.v} onClick={() => setStatusFilter(f.v)}
-                className={'px-3 py-1.5 rounded-md text-xs font-medium transition-colors whitespace-nowrap ' +
-                  (statusFilter === f.v ? 'bg-[#0a0a0a] text-white' : 'text-gray-600 hover:bg-[#fafaf7]')}>
-                {f.l}
-              </button>
+            {[{ v: 'all', l: 'All' }, { v: 'pending', l: 'Pending' }, { v: 'in_progress', l: 'In Progress' }, { v: 'completed', l: 'Completed' }].map(f => (
+              <button key={f.v} onClick={() => setStatusFilter(f.v)} className={'px-3 py-1.5 rounded-md text-xs font-medium transition-colors whitespace-nowrap ' + (statusFilter === f.v ? 'bg-[#0a0a0a] text-white' : 'text-gray-600 hover:bg-[#fafaf7]')}>{f.l}</button>
             ))}
           </div>
         </div>
-
         {bulkResult && (
           <div className="bg-emerald-50 border border-emerald-100 text-emerald-700 px-4 py-3 rounded-xl text-sm mb-4 animate-slide-up">
             <strong>Import complete:</strong> {bulkResult.created || 0} created, {bulkResult.updated || 0} updated, {bulkResult.errors?.length || 0} errors.
-            {bulkResult.errors?.length > 0 && (
-              <details className="mt-2">
-                <summary className="cursor-pointer font-medium">Show errors</summary>
-                <ul className="mt-2 text-xs space-y-1">
-                  {bulkResult.errors.map((e: string, i: number) => <li key={i}>• {e}</li>)}
-                </ul>
-              </details>
-            )}
+            {bulkResult.errors?.length > 0 && (<details className="mt-2"><summary className="cursor-pointer font-medium">Show errors</summary><ul className="mt-2 text-xs space-y-1">{bulkResult.errors.map((e: string, i: number) => <li key={i}>• {e}</li>)}</ul></details>)}
           </div>
         )}
-
         <div className="bg-white rounded-2xl border border-[#ebebe6] overflow-hidden">
           <div className="px-4 py-3 border-b border-[#ebebe6] bg-[#fafaf7] flex items-center justify-between">
             <label className="flex items-center gap-2 cursor-pointer">
@@ -579,9 +489,7 @@ export default function Home() {
           </div>
           {filteredContracts().length === 0 ? (
             <div className="px-6 py-12 text-center">
-              <div className="w-12 h-12 rounded-full bg-[#fafaf7] flex items-center justify-center mx-auto mb-3 text-gray-400">
-                <Icon.Car />
-              </div>
+              <div className="w-12 h-12 rounded-full bg-[#fafaf7] flex items-center justify-center mx-auto mb-3 text-gray-400"><Icon.Car /></div>
               <p className="text-sm font-medium text-gray-700 mb-1">No contracts found</p>
               <p className="text-xs text-gray-500">{searchQuery ? 'Try a different search.' : 'Create your first contract to get started.'}</p>
             </div>
@@ -610,9 +518,7 @@ export default function Home() {
                         <span className={`text-xs font-medium ${sb.text}`}>{sb.label}</span>
                       </div>
                       <div className="col-span-12 md:col-span-2 flex justify-end gap-1">
-                        <button onClick={() => handleGenerateToken(c.id)} className="p-2 rounded-lg text-gray-500 hover:bg-[#FFCB05]/10 hover:text-[#0a0a0a] transition-colors" title="Generate Token">
-                          <Icon.Link />
-                        </button>
+                        <button onClick={() => handleGenerateToken(c.id)} className="p-2 rounded-lg text-gray-500 hover:bg-[#FFCB05]/10 hover:text-[#0a0a0a] transition-colors" title="Generate Token"><Icon.Link /></button>
                       </div>
                     </div>
                   </div>
@@ -622,91 +528,95 @@ export default function Home() {
           )}
         </div>
       </main>
-
       {showCreate && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 animate-fade-in" onClick={() => setShowCreate(false)}>
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg p-6 animate-slide-up" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-5">
-              <h3 className="text-lg font-bold tracking-tight text-gray-900">New Contract</h3>
-              <button onClick={() => setShowCreate(false)} className="text-gray-400 hover:text-gray-600 p-1 rounded-lg hover:bg-gray-100 transition-colors"><Icon.Close /></button>
+              <h3 className="text-lg font-bold text-gray-900">New Contract</h3>
+              <button onClick={() => setShowCreate(false)} className="p-1.5 rounded-lg text-gray-400 hover:bg-gray-100"><Icon.Close /></button>
             </div>
-            <form onSubmit={handleCreateContract} className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+            <form onSubmit={handleCreateContract} className="space-y-3">
+              <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-medium text-gray-600 mb-1.5">Contract Number *</label>
-                  <input required value={createForm.contractNumber} onChange={e => setCreateForm({ ...createForm, contractNumber: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:border-[#FFCB05] focus:ring-2 focus:ring-[#FFCB05]/20 transition-all" />
+                  <label className="block text-xs font-medium text-gray-700 mb-1">Contract Number</label>
+                  <input required value={createForm.contractNumber} onChange={e => setCreateForm({ ...createForm, contractNumber: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:border-[#FFCB05] focus:ring-2 focus:ring-[#FFCB05]/20" />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-gray-600 mb-1.5">Customer Name *</label>
-                  <input required value={createForm.customerName} onChange={e => setCreateForm({ ...createForm, customerName: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:border-[#FFCB05] focus:ring-2 focus:ring-[#FFCB05]/20 transition-all" />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-gray-600 mb-1.5">Customer Email</label>
-                  <input type="email" value={createForm.customerEmail} onChange={e => setCreateForm({ ...createForm, customerEmail: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:border-[#FFCB05] focus:ring-2 focus:ring-[#FFCB05]/20 transition-all" />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-gray-600 mb-1.5">Customer Phone</label>
-                  <input value={createForm.customerPhone} onChange={e => setCreateForm({ ...createForm, customerPhone: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:border-[#FFCB05] focus:ring-2 focus:ring-[#FFCB05]/20 transition-all" />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-gray-600 mb-1.5">Vehicle Plate *</label>
-                  <input required value={createForm.vehiclePlate} onChange={e => setCreateForm({ ...createForm, vehiclePlate: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:border-[#FFCB05] focus:ring-2 focus:ring-[#FFCB05]/20 transition-all" />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-gray-600 mb-1.5">Vehicle Model *</label>
-                  <input required value={createForm.vehicleModel} onChange={e => setCreateForm({ ...createForm, vehicleModel: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:border-[#FFCB05] focus:ring-2 focus:ring-[#FFCB05]/20 transition-all" />
-                </div>
-                <div className="col-span-2">
-                  <label className="block text-xs font-medium text-gray-600 mb-1.5">Vehicle Color</label>
-                  <input value={createForm.vehicleColor} onChange={e => setCreateForm({ ...createForm, vehicleColor: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:border-[#FFCB05] focus:ring-2 focus:ring-[#FFCB05]/20 transition-all" />
+                  <label className="block text-xs font-medium text-gray-700 mb-1">Customer Name</label>
+                  <input required value={createForm.customerName} onChange={e => setCreateForm({ ...createForm, customerName: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:border-[#FFCB05] focus:ring-2 focus:ring-[#FFCB05]/20" />
                 </div>
               </div>
-              <div className="flex items-center justify-end gap-3 pt-4 border-t border-gray-100">
-                <button type="button" onClick={() => setShowCreate(false)} className="px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition-colors">Cancel</button>
-                <button type="submit" className="px-4 py-2 text-sm font-medium bg-[#0a0a0a] hover:bg-[#161616] text-white rounded-lg transition-colors active:scale-[0.98]">Create Contract</button>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">Email (Optional)</label>
+                  <input type="email" value={createForm.customerEmail} onChange={e => setCreateForm({ ...createForm, customerEmail: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:border-[#FFCB05] focus:ring-2 focus:ring-[#FFCB05]/20" />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">Phone (Optional)</label>
+                  <input value={createForm.customerPhone} onChange={e => setCreateForm({ ...createForm, customerPhone: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:border-[#FFCB05] focus:ring-2 focus:ring-[#FFCB05]/20" />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">Vehicle Plate</label>
+                  <input required value={createForm.vehiclePlate} onChange={e => setCreateForm({ ...createForm, vehiclePlate: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:border-[#FFCB05] focus:ring-2 focus:ring-[#FFCB05]/20" />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">Vehicle Model</label>
+                  <input required value={createForm.vehicleModel} onChange={e => setCreateForm({ ...createForm, vehicleModel: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:border-[#FFCB05] focus:ring-2 focus:ring-[#FFCB05]/20" />
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">Vehicle Color (Optional)</label>
+                <input value={createForm.vehicleColor} onChange={e => setCreateForm({ ...createForm, vehicleColor: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:border-[#FFCB05] focus:ring-2 focus:ring-[#FFCB05]/20" />
+              </div>
+              <div className="flex gap-2 pt-4">
+                <button type="button" onClick={() => setShowCreate(false)} className="flex-1 py-2.5 rounded-lg border border-gray-200 text-sm font-medium text-gray-700 hover:bg-gray-50">Cancel</button>
+                <button type="submit" className="flex-1 py-2.5 rounded-lg bg-[#0a0a0a] text-white text-sm font-medium hover:bg-[#161616]">Create Contract</button>
               </div>
             </form>
           </div>
         </div>
       )}
-
       {generatedToken && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 animate-fade-in" onClick={() => setGeneratedToken(null)}>
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg p-6 animate-slide-up" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-5">
-              <h3 className="text-lg font-bold tracking-tight text-gray-900">Token Generated</h3>
-              <button onClick={() => setGeneratedToken(null)} className="text-gray-400 hover:text-gray-600 p-1 rounded-lg hover:bg-gray-100 transition-colors"><Icon.Close /></button>
+              <h3 className="text-lg font-bold text-gray-900">Access Link Generated</h3>
+              <button onClick={() => setGeneratedToken(null)} className="p-1.5 rounded-lg text-gray-400 hover:bg-gray-100"><Icon.Close /></button>
             </div>
             <div className="space-y-4">
-              <p className="text-sm text-gray-600">Share this link with the customer to complete the check-in:</p>
-              <div className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg border border-gray-200">
-                <code className="flex-1 text-xs text-gray-800 overflow-x-auto whitespace-nowrap">{generatedToken.link}</code>
-                <button onClick={() => copyToClip(generatedToken.link, 'link')} className="px-3 py-1.5 text-xs font-medium bg-[#0a0a0a] text-white rounded-md hover:bg-[#161616] transition-colors">
-                  {copied === 'link' ? 'Copied!' : 'Copy'}
-                </button>
+              <div className="bg-gray-50 rounded-xl p-4 border border-gray-100">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-xs font-medium text-gray-500">Token</span>
+                  <button onClick={() => copyToClip(generatedToken.token, 'token')} className="text-xs font-medium text-[#0a0a0a] hover:underline">{copied === 'token' ? 'Copied!' : 'Copy'}</button>
+                </div>
+                <p className="font-mono text-sm text-gray-900 break-all">{generatedToken.token}</p>
               </div>
-              <div className="text-xs text-gray-500">
-                <p>Expires at: {new Date(generatedToken.expiresAt).toLocaleString()}</p>
+              <div className="bg-gray-50 rounded-xl p-4 border border-gray-100">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-xs font-medium text-gray-500">Customer Link</span>
+                  <button onClick={() => copyToClip(generatedToken.link, 'link')} className="text-xs font-medium text-[#0a0a0a] hover:underline">{copied === 'link' ? 'Copied!' : 'Copy'}</button>
+                </div>
+                <p className="font-mono text-sm text-gray-900 break-all">{generatedToken.link}</p>
               </div>
-            </div>
-            <div className="flex items-center justify-end pt-4 border-t border-gray-100 mt-4">
-              <button onClick={() => setGeneratedToken(null)} className="px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition-colors">Close</button>
+              <div className="flex items-center gap-2 text-sm text-gray-500">
+                <Icon.Calendar />
+                <span>Expires: {new Date(generatedToken.expiresAt).toLocaleString()}</span>
+              </div>
+              <button onClick={() => setGeneratedToken(null)} className="w-full py-2.5 rounded-lg bg-[#0a0a0a] text-white text-sm font-medium hover:bg-[#161616]">Done</button>
             </div>
           </div>
         </div>
       )}
-
       {deleteAllConfirm && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 animate-fade-in" onClick={() => setDeleteAllConfirm(false)}>
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6 animate-slide-up" onClick={e => e.stopPropagation()}>
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center text-red-600"><Icon.Trash /></div>
-              <h3 className="text-lg font-bold tracking-tight text-gray-900">Delete Contracts</h3>
-            </div>
-            <p className="text-sm text-gray-600 mb-5">Are you sure you want to delete {selectedContracts.size} contract(s)? This action cannot be undone.</p>
-            <div className="flex items-center justify-end gap-3">
-              <button onClick={() => setDeleteAllConfirm(false)} className="px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition-colors">Cancel</button>
-              <button onClick={handleDeleteSelected} className="px-4 py-2 text-sm font-medium bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors active:scale-[0.98]">Delete</button>
+            <h3 className="text-lg font-bold text-gray-900 mb-2">Delete {selectedContracts.size} contracts?</h3>
+            <p className="text-sm text-gray-500 mb-5">This action cannot be undone. All photos and tokens associated with these contracts will be permanently deleted.</p>
+            <div className="flex gap-2">
+              <button onClick={() => setDeleteAllConfirm(false)} className="flex-1 py-2.5 rounded-lg border border-gray-200 text-sm font-medium text-gray-700 hover:bg-gray-50">Cancel</button>
+              <button onClick={handleDeleteSelected} className="flex-1 py-2.5 rounded-lg bg-red-600 text-white text-sm font-medium hover:bg-red-700">Delete All</button>
             </div>
           </div>
         </div>
