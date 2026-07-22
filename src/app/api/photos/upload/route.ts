@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { uploadToSharePoint, isGraphConfigured } from '@/lib/graph-api';
+import { uploadToSharePoint, deleteFromSharePoint, isGraphConfigured } from '@/lib/graph-api';
 import { writeFile, mkdir } from 'fs/promises';
 import path from 'path';
 import crypto from 'crypto';
 
-export const maxDuration = 30;
+export const maxDuration = 60; // Increased to handle chunked uploads
 const MAX_PHOTOS_PER_REQUIREMENT = 10;
 
 export async function POST(request: NextRequest) {
@@ -15,13 +15,11 @@ export async function POST(request: NextRequest) {
     const file = formData.get('photo') as File | null;
     const requirementId = formData.get('requirementId') as string;
 
-    // Geolocation data from client (optional — never block upload if missing)
     const latitudeStr = formData.get('latitude') as string | null;
     const longitudeStr = formData.get('longitude') as string | null;
     const latitude = latitudeStr ? parseFloat(latitudeStr) : null;
     const longitude = longitudeStr ? parseFloat(longitudeStr) : null;
 
-    // Validate lat/lng if provided
     const validLat = (latitude !== null && !isNaN(latitude) && latitude >= -90 && latitude <= 90) ? latitude : null;
     const validLng = (longitude !== null && !isNaN(longitude) && longitude >= -180 && longitude <= 180) ? longitude : null;
 
@@ -50,59 +48,83 @@ export async function POST(request: NextRequest) {
     const fileName = accessToken.contract.contractNumber + '_' + requirementId + '_' + uniqueId + '.' + ext;
 
     const isVercel = !!process.env.VERCEL;
-    const baseDir = isVercel ? '/tmp/uploads' : path.join(process.cwd(), 'uploads');
-    const contractDir = path.join(baseDir, accessToken.contract.contractNumber);
-    await mkdir(contractDir, { recursive: true });
+    const isGraphReady = await isGraphConfigured();
 
     let localPath = '';
     let graphItemId: string | null = null;
     let graphDriveId: string | null = null;
 
-    if (await isGraphConfigured()) {
+    if (isGraphReady) {
       try {
+        // Non catturiamo l'errore silenziosamente. Se Graph fallisce, deve bloccarsi.
         const result = await uploadToSharePoint(fileName, buffer, accessToken.contract.contractNumber);
-        if (result) { graphItemId = result.graphItemId; graphDriveId = result.graphDriveId; localPath = result.webUrl; }
-      } catch (graphError) { console.error('Graph API failed, fallback to local:', graphError); }
+        graphItemId = result.graphItemId;
+        graphDriveId = result.graphDriveId;
+        localPath = result.webUrl; // Salva l'URL web di SharePoint nel DB
+      } catch (graphError: any) {
+        console.error('Graph API upload failed critically:', graphError.message);
+        // Su Vercel NON facciamo fallback locale, perché i file verrebbero persi al riavvio della funzione.
+        if (isVercel) {
+          return NextResponse.json({ 
+            error: 'Upload to Microsoft failed: ' + graphError.message + '. Please try again.' 
+          }, { status: 503 });
+        }
+        // In locale/dev, usiamo il fallback
+        console.log('Falling back to local storage (dev mode)...');
+      }
     }
 
+    // Se non abbiamo graphItemId (o graph non configurato o fallback in dev), salva localmente
     if (!graphItemId) {
+      const baseDir = path.join(process.cwd(), 'uploads');
+      const contractDir = path.join(baseDir, accessToken.contract.contractNumber);
+      await mkdir(contractDir, { recursive: true });
       await writeFile(path.join(contractDir, fileName), buffer);
       localPath = '/uploads/' + accessToken.contract.contractNumber + '/' + fileName;
     }
 
-    // Generate server-side timestamp (capturedAt) at the moment of upload
     const capturedAt = new Date();
 
-    const submission = await db.photoSubmission.create({
-      data: {
-        contractId: accessToken.contractId,
-        requirementId,
-        fileName,
-        fileSize: file.size,
-        mimeType: file.type,
-        localPath,
-        graphItemId,
-        graphDriveId,
-        capturedAt,
-        latitude: validLat,
-        longitude: validLng,
-      },
-    });
+    try {
+      const submission = await db.photoSubmission.create({
+        data: {
+          contractId: accessToken.contractId,
+          requirementId,
+          fileName,
+          fileSize: file.size,
+          mimeType: file.type,
+          localPath,
+          graphItemId,
+          graphDriveId,
+          capturedAt,
+          latitude: validLat,
+          longitude: validLng,
+        },
+      });
 
-    await db.rentalContract.update({ where: { id: accessToken.contractId }, data: { status: 'in_progress' } });
+      await db.rentalContract.update({ where: { id: accessToken.contractId }, data: { status: 'in_progress' } });
 
-    return NextResponse.json({
-      success: true,
-      submission: {
-        id: submission.id,
-        fileName: submission.fileName,
-        localPath: submission.localPath,
-        capturedAt: submission.capturedAt.toISOString(),
-        latitude: submission.latitude,
-        longitude: submission.longitude,
-      },
-      photoCount: existingCount + 1,
-    });
+      return NextResponse.json({
+        success: true,
+        submission: {
+          id: submission.id,
+          fileName: submission.fileName,
+          localPath: submission.localPath,
+          capturedAt: submission.capturedAt.toISOString(),
+          latitude: submission.latitude,
+          longitude: submission.longitude,
+        },
+        photoCount: existingCount + 1,
+      });
+    } catch (dbError: any) {
+      // Rollback di sicurezza: se il DB fallisce, elimina il file appena caricato su SharePoint
+      if (graphItemId) {
+        console.error('DB save failed, rolling back SharePoint upload...', dbError.message);
+        await deleteFromSharePoint(graphItemId, graphDriveId || '');
+      }
+      throw dbError;
+    }
+
   } catch (error) {
     console.error('Photo upload error:', error);
     const msg = error instanceof Error ? error.message : 'Unknown error';
