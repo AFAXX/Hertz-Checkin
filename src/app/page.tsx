@@ -708,7 +708,7 @@ export default function Home() {
                 </div>
               </div>
             </div>
-              <button onClick={() => setSearchQuery('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"><Icon.Close /></button>
+         <button onClick={() => setSearchQuery('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"><Icon.Close /></button>
             )}
           </div>
           <div className="flex gap-1.5 bg-white border border-[#ebebe6] rounded-lg p-1">
