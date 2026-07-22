@@ -708,3 +708,220 @@ export default function Home() {
                 </div>
               </div>
             </div>
+              <button onClick={() => setSearchQuery('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"><Icon.Close /></button>
+            )}
+          </div>
+          <div className="flex gap-1.5 bg-white border border-[#ebebe6] rounded-lg p-1">
+            {[
+              { v: 'all', l: 'All' },
+              { v: 'pending', l: 'Pending' },
+              { v: 'in_progress', l: 'In Progress' },
+              { v: 'completed', l: 'Completed' },
+            ].map(f => (
+              <button key={f.v} onClick={() => setStatusFilter(f.v)}
+                className={'px-3 py-1.5 rounded-md text-xs font-medium transition-colors ' +
+                  (statusFilter === f.v ? 'bg-[#0a0a0a] text-white' : 'text-gray-600 hover:bg-[#fafaf7]')}>
+                {f.l}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Bulk upload result */}
+        {bulkResult && (
+          <div className="bg-emerald-50 border border-emerald-100 text-emerald-700 px-4 py-3 rounded-xl text-sm mb-4 animate-slide-up">
+            <strong>Import complete:</strong> {bulkResult.created || 0} created, {bulkResult.updated || 0} updated, {bulkResult.errors?.length || 0} errors.
+            {bulkResult.errors?.length > 0 && (
+              <details className="mt-2">
+                <summary className="cursor-pointer font-medium">Show errors</summary>
+                <ul className="mt-2 text-xs space-y-1">
+                  {bulkResult.errors.map((e: string, i: number) => <li key={i}>• {e}</li>)}
+                </ul>
+              </details>
+            )}
+          </div>
+        )}
+
+        {/* Contracts list */}
+        <div className="bg-white rounded-2xl border border-[#ebebe6] overflow-hidden">
+          <div className="px-4 py-3 border-b border-[#ebebe6] bg-[#fafaf7] flex items-center justify-between">
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input type="checkbox" checked={filtered.length > 0 && selectedContracts.size === filtered.length} onChange={toggleSelectAll} className="w-4 h-4 rounded border-gray-300 text-[#0a0a0a] focus:ring-[#FFCB05]" />
+              <span className="text-xs font-medium text-gray-600">{filtered.length} contracts</span>
+            </label>
+            <span className="text-xs text-gray-400">Total: {contracts.length}</span>
+          </div>
+          {filtered.length === 0 ? (
+            <div className="px-6 py-12 text-center">
+              <div className="w-12 h-12 rounded-full bg-[#fafaf7] flex items-center justify-center mx-auto mb-3 text-gray-400">
+                <Icon.Car />
+              </div>
+              <p className="text-sm font-medium text-gray-700 mb-1">No contracts found</p>
+              <p className="text-xs text-gray-500">{searchQuery ? 'Try a different search.' : 'Create your first contract to get started.'}</p>
+            </div>
+          ) : (
+            <div className="divide-y divide-[#ebebe6]">
+              {filtered.map(c => {
+                const sb = statusBadge(c.status);
+                return (
+                  <div key={c.id} className="px-4 py-3 flex items-center gap-3 hover:bg-[#fafaf7] transition-colors">
+                    <input type="checkbox" checked={selectedContracts.has(c.id)} onChange={() => toggleSelect(c.id)} className="w-4 h-4 rounded border-gray-300 text-[#0a0a0a] focus:ring-[#FFCB05]" />
+                    <div className="flex-1 min-w-0 grid grid-cols-12 gap-3 items-center">
+                      <div className="col-span-12 md:col-span-3">
+                        <p className="text-sm font-semibold text-gray-900 tabular-nums truncate">{c.contractNumber}</p>
+                        <p className="text-xs text-gray-500 truncate">{c.customerName}</p>
+                      </div>
+                      <div className="col-span-6 md:col-span-3">
+                        <p className="text-sm text-gray-700 tabular-nums truncate">{c.vehiclePlate}</p>
+                        <p className="text-xs text-gray-500 truncate">{c.vehicleModel}</p>
+                      </div>
+                      <div className="col-span-3 md:col-span-2 hidden md:block">
+                        <p className="text-xs text-gray-500">{c.photosSubmitted} photos</p>
+                        <p className="text-xs text-gray-400">{c.tokens?.length || 0} tokens</p>
+                      </div>
+                      <div className="col-span-3 md:col-span-2 hidden lg:flex items-center gap-1.5 text-xs text-gray-500">
+                        <Icon.Calendar />
+                        <span>{new Date(c.createdAt).toLocaleDateString('en-GB')}</span>
+                      </div>
+                      <div className="col-span-12 md:col-span-2 flex items-center justify-end gap-2">
+                        <span className={'inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-xs font-medium ' + sb.bg + ' ' + sb.text}>
+                          <span className={'w-1.5 h-1.5 rounded-full status-dot ' + sb.dot} />
+                          {sb.label}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <button onClick={() => handleGenerateToken(c.id)} className="p-2 rounded-lg hover:bg-[#fafaf7] text-gray-500 hover:text-[#0a0a0a] transition-colors" title="Generate token">
+                        <Icon.Link />
+                      </button>
+                      <button onClick={() => setDeleteConfirm(c.id)} className="p-2 rounded-lg hover:bg-red-50 text-gray-500 hover:text-red-600 transition-colors" title="Delete">
+                        <Icon.Trash />
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        <div className="h-10" />
+      </div>
+
+      {/* CREATE CONTRACT MODAL */}
+      {showCreate && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in" onClick={() => setShowCreate(false)}>
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 animate-slide-up" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-5">
+              <h2 className="text-lg font-bold text-gray-900">New contract</h2>
+              <button onClick={() => setShowCreate(false)} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-600"><Icon.Close /></button>
+            </div>
+            <form onSubmit={handleCreateContract} className="space-y-3">
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">Contract number *</label>
+                <input required type="text" value={createForm.contractNumber} onChange={e => setCreateForm({ ...createForm, contractNumber: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-[#ebebe6] text-sm focus:outline-none focus:border-[#FFCB05] focus:ring-2 focus:ring-[#FFCB05]/20" placeholder="e.g. HERTZ-2026-001" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">Customer name *</label>
+                <input required type="text" value={createForm.customerName} onChange={e => setCreateForm({ ...createForm, customerName: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-[#ebebe6] text-sm focus:outline-none focus:border-[#FFCB05] focus:ring-2 focus:ring-[#FFCB05]/20" />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">Email</label>
+                  <input type="email" value={createForm.customerEmail} onChange={e => setCreateForm({ ...createForm, customerEmail: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-[#ebebe6] text-sm focus:outline-none focus:border-[#FFCB05] focus:ring-2 focus:ring-[#FFCB05]/20" />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">Phone</label>
+                  <input type="tel" value={createForm.customerPhone} onChange={e => setCreateForm({ ...createForm, customerPhone: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-[#ebebe6] text-sm focus:outline-none focus:border-[#FFCB05] focus:ring-2 focus:ring-[#FFCB05]/20" />
+                </div>
+              </div>
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">Plate *</label>
+                  <input required type="text" value={createForm.vehiclePlate} onChange={e => setCreateForm({ ...createForm, vehiclePlate: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-[#ebebe6] text-sm focus:outline-none focus:border-[#FFCB05] focus:ring-2 focus:ring-[#FFCB05]/20" />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">Model *</label>
+                  <input required type="text" value={createForm.vehicleModel} onChange={e => setCreateForm({ ...createForm, vehicleModel: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-[#ebebe6] text-sm focus:outline-none focus:border-[#FFCB05] focus:ring-2 focus:ring-[#FFCB05]/20" placeholder="e.g. Fiat 500" />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">Color</label>
+                  <input type="text" value={createForm.vehicleColor} onChange={e => setCreateForm({ ...createForm, vehicleColor: e.target.value })} className="w-full px-3 py-2 rounded-lg border border-[#ebebe6] text-sm focus:outline-none focus:border-[#FFCB05] focus:ring-2 focus:ring-[#FFCB05]/20" />
+                </div>
+              </div>
+              <div className="flex gap-2 pt-3">
+                <button type="button" onClick={() => setShowCreate(false)} className="flex-1 px-4 py-2.5 rounded-lg border border-[#ebebe6] bg-white text-sm font-medium text-gray-700 hover:bg-[#fafaf7] transition-colors">Cancel</button>
+                <button type="submit" className="flex-1 px-4 py-2.5 rounded-lg bg-[#0a0a0a] hover:bg-[#161616] text-white text-sm font-medium transition-colors active:scale-[0.98]">Create contract</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* GENERATED TOKEN MODAL */}
+      {generatedToken && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in" onClick={() => setGeneratedToken(null)}>
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 animate-slide-up" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600"><Icon.Check /></div>
+              <div>
+                <h2 className="text-base font-bold text-gray-900">Token generated</h2>
+                <p className="text-xs text-gray-500">Send this link to the customer</p>
+              </div>
+            </div>
+            <div className="space-y-3">
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">Link</label>
+                <div className="flex gap-2">
+                  <input readOnly value={generatedToken.link} className="flex-1 px-3 py-2 rounded-lg border border-[#ebebe6] bg-[#fafaf7] text-xs font-mono" />
+                  <button onClick={() => copyToClip(generatedToken.link, 'link')} className="px-3 py-2 rounded-lg bg-[#0a0a0a] hover:bg-[#161616] text-white text-xs font-medium transition-colors">
+                    {copied === 'link' ? <Icon.Check /> : 'Copy'}
+                  </button>
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">Expires</label>
+                <p className="text-sm text-gray-700">{new Date(generatedToken.expiresAt).toLocaleString('en-GB')}</p>
+              </div>
+            </div>
+            <button onClick={() => setGeneratedToken(null)} className="w-full mt-5 px-4 py-2.5 rounded-lg border border-[#ebebe6] hover:bg-[#fafaf7] text-sm font-medium text-gray-700 transition-colors">Close</button>
+          </div>
+        </div>
+      )}
+
+      {/* DELETE CONFIRM (single) */}
+      {deleteConfirm && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in" onClick={() => setDeleteConfirm(null)}>
+          <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6 animate-slide-up" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center gap-3 mb-3">
+              <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center text-red-600"><Icon.Trash /></div>
+              <h2 className="text-base font-bold text-gray-900">Delete contract?</h2>
+            </div>
+            <p className="text-sm text-gray-600 mb-5">This will permanently delete the contract and all associated photos. This action cannot be undone.</p>
+            <div className="flex gap-2">
+              <button onClick={() => setDeleteConfirm(null)} className="flex-1 px-4 py-2.5 rounded-lg border border-[#ebebe6] hover:bg-[#fafaf7] text-sm font-medium text-gray-700 transition-colors">Cancel</button>
+              <button onClick={() => handleDeleteContract(deleteConfirm)} className="flex-1 px-4 py-2.5 rounded-lg bg-red-600 hover:bg-red-700 text-white text-sm font-medium transition-colors active:scale-[0.98]">Delete</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* DELETE ALL CONFIRM */}
+      {deleteAllConfirm && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in" onClick={() => setDeleteAllConfirm(false)}>
+          <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6 animate-slide-up" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center gap-3 mb-3">
+              <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center text-red-600"><Icon.Trash /></div>
+              <h2 className="text-base font-bold text-gray-900">Delete {selectedContracts.size} contracts?</h2>
+            </div>
+            <p className="text-sm text-gray-600 mb-5">This will permanently delete all selected contracts and their photos. This action cannot be undone.</p>
+            <div className="flex gap-2">
+              <button onClick={() => setDeleteAllConfirm(false)} className="flex-1 px-4 py-2.5 rounded-lg border border-[#ebebe6] hover:bg-[#fafaf7] text-sm font-medium text-gray-700 transition-colors">Cancel</button>
+              <button onClick={handleDeleteSelected} className="flex-1 px-4 py-2.5 rounded-lg bg-red-600 hover:bg-red-700 text-white text-sm font-medium transition-colors active:scale-[0.98]">Delete all</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
