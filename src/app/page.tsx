@@ -505,213 +505,63 @@ export default function Home() {
   );
 
   /* ---------- ADMIN ---------- */
-  const stats = [
-    { label: t(adminLocale, 'admin.totalContracts'), value: contracts.length, accent: 'bg-white border-[#ebebe6]', valueColor: 'text-[#0a0a0a]', labelColor: 'text-gray-500' },
-    { label: t(adminLocale, 'admin.pending'), value: contracts.filter(c => c.status === 'pending').length, accent: 'bg-white border-[#ebebe6]', valueColor: 'text-gray-600', labelColor: 'text-gray-500' },
-    { label: t(adminLocale, 'admin.inProgress'), value: contracts.filter(c => c.status === 'in_progress').length, accent: 'bg-[#FFCB05] border-[#e6b800]', valueColor: 'text-[#0a0a0a]', labelColor: 'text-[#0a0a0a]/70' },
-    { label: t(adminLocale, 'admin.completed'), value: contracts.filter(c => c.status === 'completed').length, accent: 'bg-emerald-500 border-emerald-600', valueColor: 'text-white', labelColor: 'text-white/80' },
-  ];
-
-  const filtered = filteredContracts();
-
   return (
-    <div className="min-h-screen bg-[#fafaf7]">
-      {/* Header */}
-      <div className="bg-[#0a0a0a]">
-        <div className="max-w-6xl mx-auto px-6 py-4 flex items-center gap-4">
-          <div className="w-10 h-10 rounded-lg bg-[#FFCB05] flex items-center justify-center">
-            <Icon.Car />
+    <div className="min-h-screen bg-[#fafaf7] text-gray-900">
+      <header className="sticky top-0 z-30 bg-white/80 backdrop-blur-md border-b border-[#ebebe6]">
+        <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-lg bg-[#0a0a0a] flex items-center justify-center text-[#FFCB05]">
+              <Icon.Car />
+            </div>
+            <div>
+              <h1 className="text-sm font-bold tracking-tight text-[#0a0a0a]">HERTZ MALTA</h1>
+              <p className="text-[10px] text-gray-500 uppercase tracking-wide font-medium">Admin Console</p>
+            </div>
           </div>
+          <div className="flex items-center gap-2">
+            <button onClick={loadContracts} className="p-2 rounded-lg hover:bg-[#fafaf7] text-gray-600 transition-colors" title="Refresh"><Icon.Refresh /></button>
+            <button onClick={() => signOut({ callbackUrl: '/' })} className="px-3 py-1.5 rounded-lg text-xs font-medium text-gray-600 hover:bg-[#fafaf7] border border-[#ebebe6] transition-colors">Sign out</button>
+          </div>
+        </div>
+      </header>
+
+      <main className="max-w-6xl mx-auto px-4 py-6">
+        <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 mb-4">
           <div>
-            <h1 className="text-base font-bold text-white tracking-tight">HERTZ MALTA</h1>
-            <p className="text-[11px] text-gray-400 mt-0.5 font-medium">Check-out · Admin Console</p>
+            <h2 className="text-xl font-bold tracking-tight text-[#0a0a0a]">Contracts</h2>
+            <p className="text-sm text-gray-500 mt-0.5">Manage check-ins, create tokens and upload photos.</p>
           </div>
-          {session?.user && (
-            <div className="flex items-center gap-3 ml-auto">
-              <div className="text-right">
-                <p className="text-xs text-white font-medium leading-tight">{session.user.name || session.user.email}</p>
-                <button onClick={() => signOut({ callbackUrl: '/' })} className="text-[11px] text-gray-400 hover:text-[#FFCB05] transition-colors mt-0.5">Sign out</button>
-              </div>
-              {session.user.image && <img src={session.user.image} alt="" className="w-8 h-8 rounded-full ring-2 ring-white/10" />}
-            </div>
-          )}
-        </div>
-      </div>
-
-      <div className="max-w-6xl mx-auto px-6 py-6">
-        {/* Stats Grid */}
-        <div className="grid grid-cols-4 gap-3 mb-6">
-          {stats.map(s => (
-            <div key={s.label} className={'rounded-xl p-4 border ' + s.accent}>
-              <p className={'text-2xl font-bold tabular-nums ' + s.valueColor}>{s.value}</p>
-              <p className={'text-[11px] mt-1 font-medium uppercase tracking-wide ' + s.labelColor}>{s.label}</p>
-            </div>
-          ))}
-        </div>
-
-        {/* Actions Bar */}
-        <div className="flex flex-wrap items-center gap-2 mb-4">
-          <button onClick={() => setShowCreate(true)} className="text-sm font-medium px-4 py-2 rounded-lg bg-[#0a0a0a] text-white hover:bg-[#161616] transition-all active:scale-[0.98] flex items-center gap-1.5">
-            <Icon.Plus />
-            {t(adminLocale, 'admin.newContract')}
-          </button>
-          <label className="cursor-pointer text-sm font-medium px-4 py-2 rounded-lg border border-[#ebebe6] bg-white hover:bg-[#fafaf7] transition-all flex items-center gap-1.5 text-gray-700">
-            <Icon.Upload />
-            {uploading ? t(adminLocale, 'admin.processing') : t(adminLocale, 'admin.bulkUpload')}
-            <input type="file" accept=".xlsx,.xls,.csv" onChange={handleBulkUpload} className="hidden" disabled={uploading} />
-          </label>
-          <button onClick={loadContracts} className="text-sm font-medium px-4 py-2 rounded-lg border border-[#ebebe6] bg-white hover:bg-[#fafaf7] transition-all flex items-center gap-1.5 text-gray-700">
-            <Icon.Refresh />
-            {t(adminLocale, 'admin.refresh')}
-          </button>
-          {selectedContracts.size > 0 && (
-            <button onClick={() => setDeleteAllConfirm(true)} className="text-sm font-medium px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 transition-all active:scale-[0.98] ml-auto flex items-center gap-1.5">
-              <Icon.Trash />
-              {t(adminLocale, 'admin.deleteSelected')} ({selectedContracts.size})
+          <div className="flex flex-wrap items-center gap-2">
+            <label className="cursor-pointer inline-flex items-center gap-2 bg-white border border-[#ebebe6] text-gray-700 hover:bg-[#fafaf7] px-3 py-2 rounded-lg text-sm font-medium transition-colors">
+              {uploading ? <><span className="w-4 h-4 border-2 border-gray-300 border-t-[#FFCB05] rounded-full animate-spin" /> Uploading...</> : <><Icon.Upload /> Bulk Upload Excel</>}
+              <input type="file" accept=".xlsx,.xls" onChange={handleBulkUpload} className="hidden" disabled={uploading} />
+            </label>
+            <button onClick={() => setShowCreate(true)} className="inline-flex items-center gap-2 bg-[#FFCB05] hover:bg-[#e6b800] text-[#0a0a0a] px-3 py-2 rounded-lg text-sm font-medium transition-colors shadow-sm active:scale-[0.98]">
+              <Icon.Plus /> New Contract
             </button>
-          )}
+            {selectedContracts.size > 0 && (
+              <button onClick={() => setDeleteAllConfirm(true)} className="inline-flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white px-3 py-2 rounded-lg text-sm font-medium transition-colors active:scale-[0.98]">
+                <Icon.Trash /> Delete ({selectedContracts.size})
+              </button>
+            )}
+          </div>
         </div>
 
-        {/* Search + Filter */}
-        <div className="flex flex-col sm:flex-row gap-2 mb-5">
+        <div className="flex flex-col md:flex-row items-stretch md:items-center gap-3 mb-4">
           <div className="relative flex-1">
-            <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"><Icon.Search /></div>
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"><Icon.Search /></span>
             <input
               type="text"
-              placeholder={t(adminLocale, 'admin.searchPlaceholder')}
+              placeholder="Search by contract, name, plate..."
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-10 py-2.5 rounded-lg border border-[#ebebe6] bg-white text-sm focus:outline-none focus:border-[#FFCB05] focus:ring-2 focus:ring-[#FFCB05]/20 transition-all"
+              className="w-full pl-10 pr-4 py-2 rounded-lg border border-[#ebebe6] bg-white text-sm focus:outline-none focus:border-[#FFCB05] focus:ring-2 focus:ring-[#FFCB05]/20 transition-all"
             />
             {searchQuery && (
-              <button onClick={() => setSearchQuery('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors">
-                <Icon.Close />
-              </button>
+              <button onClick={() => setSearchQuery('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"><Icon.Close /></button>
             )}
           </div>
-          <select
-            value={statusFilter}
-            onChange={e => setStatusFilter(e.target.value)}
-            className="px-3.5 py-2.5 rounded-lg border border-[#ebebe6] bg-white text-sm focus:outline-none focus:border-[#FFCB05] focus:ring-2 focus:ring-[#FFCB05]/20"
-          >
-            <option value="all">{t(adminLocale, 'admin.allStatuses')}</option>
-            <option value="pending">Pending</option>
-            <option value="in_progress">In Progress</option>
-            <option value="completed">Completed</option>
-          </select>
-        </div>
-
-        {/* Bulk Result */}
-        {bulkResult && (
-          <div className="bg-white rounded-xl p-4 border border-[#ebebe6] mb-5 animate-slide-up">
-            <h3 className="font-semibold text-gray-800 mb-2 text-sm">{t(adminLocale, 'admin.uploadSuccess')}</h3>
-            <p className="text-sm text-gray-600">{bulkResult.summary.created} {t(adminLocale, 'admin.created')}, {bulkResult.summary.skipped} {t(adminLocale, 'admin.skipped')}, {bulkResult.summary.errors} {t(adminLocale, 'admin.errors')}</p>
-            <details className="mt-2"><summary className="text-xs text-gray-500 cursor-pointer hover:text-gray-700">{t(adminLocale, 'admin.results')}</summary>
-              <div className="mt-2 max-h-40 overflow-y-auto text-xs space-y-1">
-                {bulkResult.results?.map((r: any, i: number) => <div key={i} className={r.status === 'error' ? 'text-red-600' : r.status === 'skipped' ? 'text-amber-600' : 'text-emerald-600'}>Row {r.row}: {r.contractNumber} - {r.customerName} [{r.status}]{r.error && ' - ' + r.error}</div>)}
-              </div>
-            </details>
-            <button onClick={() => setBulkResult(null)} className="mt-2 text-xs text-gray-400 hover:text-gray-600">{t(adminLocale, 'admin.close')}</button>
-          </div>
-        )}
-
-        {/* Contracts Table */}
-        <div className="bg-white rounded-xl border border-[#ebebe6] overflow-hidden">
-          <div className="grid grid-cols-[40px_1.2fr_1.5fr_1fr_0.8fr_0.8fr_auto] items-center px-4 py-3 bg-[#fafaf7] border-b border-[#ebebe6] text-[11px] font-semibold uppercase tracking-wide text-gray-500">
-            <div><input type="checkbox" checked={filtered.length > 0 && selectedContracts.size === filtered.length} onChange={toggleSelectAll} className="w-4 h-4 rounded border-gray-300 accent-[#FFCB05] cursor-pointer" /></div>
-            <div>Contract</div>
-            <div>Customer</div>
-            <div>Vehicle</div>
-            <div>Photos</div>
-            <div>Status</div>
-            <div></div>
-          </div>
-          {filtered.length === 0 ? (
-            <div className="py-16 text-center text-sm text-gray-400">No contracts found</div>
-          ) : (
-            <div className="divide-y divide-[#ebebe6]">
-              {filtered.map(c => {
-                const sb = statusBadge(c.status);
-                return (
-                  <div key={c.id} className="grid grid-cols-[40px_1.2fr_1.5fr_1fr_0.8fr_0.8fr_auto] items-center px-4 py-3 hover:bg-[#fafaf7] transition-colors group">
-                    <div><input type="checkbox" checked={selectedContracts.has(c.id)} onChange={() => toggleSelect(c.id)} className="w-4 h-4 rounded border-gray-300 accent-[#FFCB05] cursor-pointer" /></div>
-                    <div className="font-mono text-sm font-semibold text-[#0a0a0a] tabular-nums">{c.contractNumber}</div>
-                    <div>
-                      <div className="text-sm font-medium text-gray-800">{c.customerName}</div>
-                      {c.customerEmail && <div className="text-xs text-gray-500 mt-0.5">{c.customerEmail}</div>}
-                    </div>
-                    <div>
-                      <div className="text-sm font-medium text-gray-800">{c.vehicleModel}</div>
-                      <div className="text-xs text-gray-500 tabular-nums font-mono mt-0.5">{c.vehiclePlate}</div>
-                    </div>
-                    <div className="text-sm text-gray-700 tabular-nums">{c.photosSubmitted}</div>
-                    <div>
-                      <span className={'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium ' + sb.bg + ' ' + sb.text}>
-                        <span className={'w-1.5 h-1.5 rounded-full ' + sb.dot}></span>
-                        {sb.label}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-1 opacity-60 group-hover:opacity-100 transition-opacity">
-                      <button onClick={() => handleGenerateToken(c.id)} className="px-2.5 py-1.5 text-xs font-medium text-gray-700 hover:bg-[#fafaf7] rounded-md transition-colors flex items-center gap-1">
-                        <Icon.Link />
-                        Link
-                      </button>
-                      <button onClick={() => setDeleteConfirm(c.id)} className="px-2 py-1.5 text-xs text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors">
-                        <Icon.Trash />
-                      </button>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Create Contract Modal */}
-      {showCreate && (
-        <div className="fixed inset-0 bg-[#0a0a0a]/40 backdrop-blur-sm flex items-center justify-center z-40 p-4 animate-fade-in" onClick={() => setShowCreate(false)}>
-          <form onSubmit={handleCreateContract} onClick={e => e.stopPropagation()} className="bg-white rounded-2xl shadow-2xl max-w-md w-full max-h-[90vh] overflow-hidden flex flex-col animate-slide-up">
-            <div className="px-6 py-5 bg-[#0a0a0a] flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-lg bg-[#FFCB05] flex items-center justify-center"><Icon.Plus /></div>
-                <div>
-                  <h2 className="font-semibold text-white text-base">{t(adminLocale, 'admin.newContractTitle')}</h2>
-                  <p className="text-[11px] text-[#FFCB05] mt-0.5 font-medium">{t(adminLocale, 'admin.newContractDesc')}</p>
-                </div>
-              </div>
-              <button type="button" onClick={() => setShowCreate(false)} className="text-gray-400 hover:text-white transition-colors">
-                <Icon.Close />
-              </button>
-            </div>
-            <div className="px-6 py-5 overflow-y-auto space-y-5">
-              <div>
-                <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-500 mb-3">{t(adminLocale, 'admin.contractDetails')}</p>
-                <div className="space-y-3">
-                  {[{ key: 'contractNumber', label: t(adminLocale, 'admin.contractNumber'), required: true }, { key: 'customerName', label: t(adminLocale, 'admin.customerName'), required: true }].map(f => (
-                    <div key={f.key}>
-                      <label className="block text-xs font-medium text-gray-700 mb-1.5">{f.label}{f.required && <span className="text-[#FFCB05]"> *</span>}</label>
-                      <input type="text" value={(createForm as any)[f.key]} onChange={e => setCreateForm(p => ({ ...p, [f.key]: e.target.value }))} className="w-full border border-[#ebebe6] rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-[#FFCB05] focus:ring-2 focus:ring-[#FFCB05]/20 transition-all" required={f.required} />
-                    </div>
-                  ))}
-                </div>
-              </div>
-              <div>
-                <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-400 mb-3">{t(adminLocale, 'admin.optionalDetails')}</p>
-                <div className="grid grid-cols-2 gap-3">
-                  {[{ key: 'vehiclePlate', label: t(adminLocale, 'admin.vehiclePlate') }, { key: 'vehicleModel', label: t(adminLocale, 'admin.vehicleModel') }, { key: 'vehicleColor', label: t(adminLocale, 'admin.vehicleColor') }, { key: 'customerEmail', label: t(adminLocale, 'admin.customerEmail') }, { key: 'customerPhone', label: t(adminLocale, 'admin.customerPhone') }].map(f => (
-                    <div key={f.key} className={f.key === 'customerEmail' ? 'col-span-2' : ''}>
-                      <label className="block text-xs font-medium text-gray-700 mb-1.5">{f.label}</label>
-                      <input type="text" value={(createForm as any)[f.key]} onChange={e => setCreateForm(p => ({ ...p, [f.key]: e.target.value }))} className="w-full border border-[#ebebe6] rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-[#FFCB05] focus:ring-2 focus:ring-[#FFCB05]/20 transition-all" />
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-         <button onClick={() => setSearchQuery('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"><Icon.Close /></button>
-            )}
-          </div>
-          <div className="flex gap-1.5 bg-white border border-[#ebebe6] rounded-lg p-1">
+          <div className="flex gap-1.5 bg-white border border-[#ebebe6] rounded-lg p-1 overflow-x-auto">
             {[
               { v: 'all', l: 'All' },
               { v: 'pending', l: 'Pending' },
@@ -719,7 +569,7 @@ export default function Home() {
               { v: 'completed', l: 'Completed' },
             ].map(f => (
               <button key={f.v} onClick={() => setStatusFilter(f.v)}
-                className={'px-3 py-1.5 rounded-md text-xs font-medium transition-colors ' +
+                className={'px-3 py-1.5 rounded-md text-xs font-medium transition-colors whitespace-nowrap ' +
                   (statusFilter === f.v ? 'bg-[#0a0a0a] text-white' : 'text-gray-600 hover:bg-[#fafaf7]')}>
                 {f.l}
               </button>
@@ -727,7 +577,6 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Bulk upload result */}
         {bulkResult && (
           <div className="bg-emerald-50 border border-emerald-100 text-emerald-700 px-4 py-3 rounded-xl text-sm mb-4 animate-slide-up">
             <strong>Import complete:</strong> {bulkResult.created || 0} created, {bulkResult.updated || 0} updated, {bulkResult.errors?.length || 0} errors.
@@ -742,16 +591,15 @@ export default function Home() {
           </div>
         )}
 
-        {/* Contracts list */}
         <div className="bg-white rounded-2xl border border-[#ebebe6] overflow-hidden">
           <div className="px-4 py-3 border-b border-[#ebebe6] bg-[#fafaf7] flex items-center justify-between">
             <label className="flex items-center gap-2 cursor-pointer">
-              <input type="checkbox" checked={filtered.length > 0 && selectedContracts.size === filtered.length} onChange={toggleSelectAll} className="w-4 h-4 rounded border-gray-300 text-[#0a0a0a] focus:ring-[#FFCB05]" />
-              <span className="text-xs font-medium text-gray-600">{filtered.length} contracts</span>
+              <input type="checkbox" checked={filteredContracts().length > 0 && selectedContracts.size === filteredContracts().length} onChange={toggleSelectAll} className="w-4 h-4 rounded border-gray-300 text-[#0a0a0a] focus:ring-[#FFCB05]" />
+              <span className="text-xs font-medium text-gray-600">{filteredContracts().length} contracts</span>
             </label>
             <span className="text-xs text-gray-400">Total: {contracts.length}</span>
           </div>
-          {filtered.length === 0 ? (
+          {filteredContracts().length === 0 ? (
             <div className="px-6 py-12 text-center">
               <div className="w-12 h-12 rounded-full bg-[#fafaf7] flex items-center justify-center mx-auto mb-3 text-gray-400">
                 <Icon.Car />
@@ -761,7 +609,7 @@ export default function Home() {
             </div>
           ) : (
             <div className="divide-y divide-[#ebebe6]">
-              {filtered.map(c => {
+              {filteredContracts().map(c => {
                 const sb = statusBadge(c.status);
                 return (
                   <div key={c.id} className="px-4 py-3 flex items-center gap-3 hover:bg-[#fafaf7] transition-colors">
@@ -804,9 +652,8 @@ export default function Home() {
             </div>
           )}
         </div>
-
         <div className="h-10" />
-      </div>
+      </main>
 
       {/* CREATE CONTRACT MODAL */}
       {showCreate && (
