@@ -11,7 +11,7 @@ export async function GET(request: NextRequest) {
 
     const submissions = await db.photoSubmission.findMany({
       where: { contractId: accessToken.contractId },
-            select: { id: true, localPath: true, requirementId: true, fileName: true, uploadedAt: true, capturedAt: true, latitude: true, longitude: true },
+      select: { id: true, localPath: true, requirementId: true, fileName: true, uploadedAt: true },
       orderBy: { uploadedAt: 'asc' },
     });
 

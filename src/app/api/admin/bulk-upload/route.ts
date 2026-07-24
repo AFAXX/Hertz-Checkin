@@ -1,6 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
 import { db } from '@/lib/db'
 import { v4 as uuidv4 } from 'uuid'
 import * as XLSX from 'xlsx'
@@ -88,8 +86,6 @@ function findMapping(header: string): keyof RowData | null {
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions)
-    if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     const formData = await request.formData()
     const file = formData.get('file') as File | null
 
@@ -278,16 +274,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { error: `Unsupported file format. Please use .xlsx, .xls, or .csv files. Details: ${msg}` },
         { status: 400 }
-      )
-    }
-    // Detect Prisma schema mismatch (archivedAt column missing) and return a helpful message
-    if (msg.includes('archivedAt') && msg.includes('does not exist')) {
-      return NextResponse.json(
-        {
-          error: 'Database migration missing. The "archivedAt" column does not exist on RentalContract table. Run `npx prisma migrate deploy` locally with DATABASE_URL pointing to production Neon, OR execute prisma/migrations/20260721_add_geo_and_auth/migration.sql directly in the Neon SQL editor, then redeploy.',
-          migrationRequired: true,
-        },
-        { status: 500 }
       )
     }
     return NextResponse.json(
